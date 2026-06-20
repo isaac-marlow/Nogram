@@ -224,6 +224,15 @@ public class StoryRecorder implements NotificationCenter.NotificationCenterDeleg
     public static boolean isVisible() {
         return instance != null && instance.isShown;
     }
+
+    private boolean shouldBlockStories() {
+        if (StoryViewer.areStoriesEnabled()) {
+            return false;
+        }
+        close(false);
+        return true;
+    }
+
     public StoryRecorder(Activity activity, int currentAccount) {
         this.activity = activity;
         this.currentAccount = currentAccount;
@@ -482,6 +491,9 @@ public class StoryRecorder implements NotificationCenter.NotificationCenterDeleg
     }
 
     public void openBot(long botId, String lang_code, SourceView sourceView) {
+        if (shouldBlockStories()) {
+            return;
+        }
         this.botId = botId;
         this.botLang = lang_code;
         this.botEdit = null;
@@ -491,7 +503,7 @@ public class StoryRecorder implements NotificationCenter.NotificationCenterDeleg
     }
 
     public void openBotEntry(long botId, String lang_code, StoryEntry entry, SourceView sourceView) {
-        if (isShown || entry == null) {
+        if (shouldBlockStories() || isShown || entry == null) {
             return;
         }
         if (MessagesController.getInstance(currentAccount).isFrozen()) {
@@ -559,7 +571,7 @@ public class StoryRecorder implements NotificationCenter.NotificationCenterDeleg
     }
 
     public void open(SourceView sourceView, boolean animated) {
-        if (isShown) {
+        if (shouldBlockStories() || isShown) {
             return;
         }
         if (MessagesController.getInstance(currentAccount).isFrozen()) {
@@ -624,7 +636,7 @@ public class StoryRecorder implements NotificationCenter.NotificationCenterDeleg
     }
 
     public void openEdit(SourceView sourceView, StoryEntry entry, long time, boolean animated) {
-        if (isShown) {
+        if (shouldBlockStories() || isShown) {
             return;
         }
         if (MessagesController.getInstance(currentAccount).isFrozen()) {
@@ -689,7 +701,7 @@ public class StoryRecorder implements NotificationCenter.NotificationCenterDeleg
     }
 
     public void openForward(SourceView sourceView, StoryEntry entry, long time, boolean animated) {
-        if (isShown) {
+        if (shouldBlockStories() || isShown) {
             return;
         }
         if (MessagesController.getInstance(currentAccount).isFrozen()) {
@@ -755,7 +767,7 @@ public class StoryRecorder implements NotificationCenter.NotificationCenterDeleg
 
     private static boolean firstOpen = true;
     public void openRepost(SourceView sourceView, StoryEntry entry) {
-        if (isShown) {
+        if (shouldBlockStories() || isShown) {
             return;
         }
         if (MessagesController.getInstance(currentAccount).isFrozen()) {

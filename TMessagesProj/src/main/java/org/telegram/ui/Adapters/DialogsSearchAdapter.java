@@ -326,6 +326,7 @@ public class DialogsSearchAdapter extends RecyclerListView.SelectionAdapter {
                 if (lastMessagesSearchId != searchId) {
                     searchResultMessages.clear();
                 }
+                filterGlobalSearchResults();
                 searchWas = true;
                 if (delegate != null) {
                     delegate.searchStateChanged(waitingResponseCount > 0, true);
@@ -1106,7 +1107,14 @@ public class DialogsSearchAdapter extends RecyclerListView.SelectionAdapter {
             query = null;
         }
         filterRecent(query);
-        if (!TextUtils.equals(sponsoredQuery, query)) {
+        if (shouldShowExactGlobalUsernameOnly()) {
+            sponsoredQuery = null;
+            sponsoredPeers.clear();
+            if (sponsoredReqId != 0) {
+                ConnectionsManager.getInstance(currentAccount).cancelRequest(sponsoredReqId, true);
+                sponsoredReqId = 0;
+            }
+        } else if (!TextUtils.equals(sponsoredQuery, query)) {
             sponsoredQuery = query;
             sponsoredPeers.clear();
             if (sponsoredReqId != 0) {
@@ -1511,6 +1519,56 @@ public class DialogsSearchAdapter extends RecyclerListView.SelectionAdapter {
         }
         // i -= messagesCount;
         return null;
+    }
+
+    private void filterGlobalSearchResults() {
+        if (!shouldShowExactGlobalUsernameOnly()) {
+            return;
+        }
+        String query = lastSearchText == null ? null : lastSearchText.trim();
+        if (TextUtils.isEmpty(query)) {
+            return;
+        }
+        if (query.startsWith("@")) {
+            query = query.substring(1);
+        }
+        ArrayList<TLObject> globalSearch = searchAdapterHelper.getGlobalSearch();
+        for (int i = globalSearch.size() - 1; i >= 0; i--) {
+            TLObject object = globalSearch.get(i);
+            boolean matches;
+            if (object instanceof TLRPC.User) {
+                matches = UserObject.hasPublicUsername((TLRPC.User) object, query);
+            } else if (object instanceof TLRPC.Chat) {
+                matches = hasExactPublicUsername((TLRPC.Chat) object, query);
+            } else {
+                matches = false;
+            }
+            if (!matches) {
+                globalSearch.remove(i);
+            }
+        }
+    }
+
+    private boolean hasExactPublicUsername(TLRPC.Chat chat, String query) {
+        if (chat == null || TextUtils.isEmpty(query)) {
+            return false;
+        }
+        if (!TextUtils.isEmpty(chat.username) && chat.username.equalsIgnoreCase(query)) {
+            return true;
+        }
+        if (chat.usernames != null) {
+            for (int i = 0; i < chat.usernames.size(); i++) {
+                TLRPC.TL_username username = chat.usernames.get(i);
+                if (username != null && username.active && !TextUtils.isEmpty(username.username) && username.username.equalsIgnoreCase(query)) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    private boolean shouldShowExactGlobalUsernameOnly() {
+        return dialogsType == DialogsActivity.DIALOGS_TYPE_DEFAULT;
     }
 
     public boolean isGlobalSearch(int i) {

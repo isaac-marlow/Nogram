@@ -1478,12 +1478,8 @@ public class SearchViewPager extends ViewPagerFixed implements FilteredSearchVie
         ArrayList<Item> items = new ArrayList<>();
 
         private final static int DIALOGS_TYPE = 0;
-        private final static int CHANNELS_TYPE = 1;
-        private final static int DOWNLOADS_TYPE = 2;
-        private final static int FILTER_TYPE = 3;
-        private final static int BOTS_TYPE = 4;
-        private final static int PUBLIC_POSTS_TYPE = 5;
-        private final static int POSTS_TYPE = 6;
+        private final static int DOWNLOADS_TYPE = 1;
+        private final static int FILTER_TYPE = 2;
 
         public ViewPagerAdapter() {
             updateItems();
@@ -1492,12 +1488,6 @@ public class SearchViewPager extends ViewPagerFixed implements FilteredSearchVie
         public void updateItems() {
             items.clear();
             items.add(new Item(DIALOGS_TYPE));
-            if (expandedPublicPosts) {
-                items.add(new Item(PUBLIC_POSTS_TYPE));
-            }
-            items.add(new Item(CHANNELS_TYPE));
-            items.add(new Item(BOTS_TYPE));
-            items.add(new Item(POSTS_TYPE));
             if (!showOnlyDialogsAdapter) {
                 Item item = new Item(FILTER_TYPE);
                 item.filterIndex = 0;
@@ -1524,20 +1514,8 @@ public class SearchViewPager extends ViewPagerFixed implements FilteredSearchVie
         public CharSequence getItemTitle(int position) {
             if (items.get(position).type == DIALOGS_TYPE) {
                 return getString(R.string.SearchAllChatsShort);
-            } else if (items.get(position).type == CHANNELS_TYPE) {
-                return getString(R.string.ChannelsTab);
-            } else if (items.get(position).type == BOTS_TYPE) {
-                return getString(R.string.AppsTab);
-            } else if (items.get(position).type == POSTS_TYPE) {
-                if (postsAreNew) {
-                    return applyNewSpan(getString(R.string.SearchPosts));
-                } else {
-                    return getString(R.string.SearchPosts);
-                }
             } else if (items.get(position).type == DOWNLOADS_TYPE) {
                 return getString(R.string.DownloadsTabs);
-            } else if (items.get(position).type == PUBLIC_POSTS_TYPE) {
-                return getString(R.string.PublicPostsTabs);
             } else {
                 return FiltersView.filters[items.get(position).filterIndex].getTitle();
             }
@@ -1600,22 +1578,10 @@ public class SearchViewPager extends ViewPagerFixed implements FilteredSearchVie
             if (items.get(position).type == DIALOGS_TYPE) {
                 return 1;
             }
-            if (items.get(position).type == CHANNELS_TYPE) {
-                return 3;
-            }
-            if (items.get(position).type == BOTS_TYPE) {
-                return 4;
-            }
             if (items.get(position).type == DOWNLOADS_TYPE) {
                 return 2;
             }
-            if (items.get(position).type == PUBLIC_POSTS_TYPE) {
-                return 5;
-            }
-            if (items.get(position).type == POSTS_TYPE) {
-                return 6;
-            }
-            return items.get(position).type + position;
+            return items.get(position).type + position + 4;
         }
 
         @Override

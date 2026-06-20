@@ -5835,6 +5835,8 @@
     <string name="MicrophoneForVoiceMessagesScoHint">Using a headset microphone may reduce background noise but will slightly decrease audio quality.</string>
     <string name="ReactionInDialog">Reacted with %s to your message</string>
     <string name="DialogNotAvailable">Not available</string>
+    <string name="ChannelNotAvailable">Channels are not available.</string>
+    <string name="BotNotAvailable">Bots are not available.</string>
 
     <string name="SetUsernameHeader">Set username</string>
     <string name="UsernamesChannelHeader">Links order</string>

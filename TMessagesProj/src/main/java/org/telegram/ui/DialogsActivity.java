@@ -259,6 +259,7 @@ import org.telegram.ui.Components.ViewPagerFixed;
 import org.telegram.ui.Stories.DialogStoriesCell;
 import org.telegram.ui.Stories.StoriesController;
 import org.telegram.ui.Stories.StoriesListPlaceProvider;
+import org.telegram.ui.Stories.StoryViewer;
 import org.telegram.ui.Stories.UserListPoller;
 import org.telegram.ui.Stories.recorder.HintView2;
 import org.telegram.ui.Stories.recorder.StoryRecorder;
@@ -2878,14 +2879,17 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
             .add(NotificationCenter.onDatabaseOpened)
             .add(NotificationCenter.didClearDatabase)
             .add(NotificationCenter.onDatabaseReset)
-            .add(NotificationCenter.storiesUpdated)
-            .add(NotificationCenter.storiesEnabledUpdate)
             .add(NotificationCenter.unconfirmedAuthUpdate)
             .add(NotificationCenter.premiumPromoUpdated)
             .add(NotificationCenter.starBalanceUpdated)
             .add(NotificationCenter.starSubscriptionsLoaded)
             .add(NotificationCenter.appConfigUpdated)
             .add(NotificationCenter.activeAuctionsUpdated);
+        if (canOpenStories()) {
+            observersGroup
+                    .add(NotificationCenter.storiesUpdated)
+                    .add(NotificationCenter.storiesEnabledUpdate);
+        }
 
         if (initialDialogsType == DIALOGS_TYPE_DEFAULT) {
             observersGroup.add(NotificationCenter.chatlistFolderUpdate);
@@ -2893,7 +2897,9 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
         }
 
         loadDialogs(getAccountInstance());
-        getMessagesController().getStoriesController().loadAllStories();
+        if (canOpenStories()) {
+            getMessagesController().getStoriesController().loadAllStories();
+        }
         getMessagesController().loadPinnedDialogs(folderId, 0, null);
         if (databaseMigrationHint != null && !getMessagesStorage().isDatabaseMigrationInProgress()) {
             View localView = databaseMigrationHint;
@@ -2902,10 +2908,12 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
             }
             databaseMigrationHint = null;
         }
-        if (isArchive()) {
-            getMessagesController().getStoriesController().loadHiddenStories();
-        } else {
-            getMessagesController().getStoriesController().loadStories();
+        if (canOpenStories()) {
+            if (isArchive()) {
+                getMessagesController().getStoriesController().loadHiddenStories();
+            } else {
+                getMessagesController().getStoriesController().loadStories();
+            }
         }
 
         getContactsController().loadGlobalPrivacySetting();
@@ -4615,7 +4623,7 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
             viewPage.dialogsAdapter.setRecyclerListView(viewPage.listView);
             viewPage.dialogsAdapter.setForceShowEmptyCell(afterSignup);
             if (viewPage.dialogsType == DIALOGS_TYPE_FORWARD) {
-                viewPage.dialogsAdapter.setAllowForwardAsStories(getMessagesController().storiesEnabled() && delegate != null && delegate.canSelectStories());
+                viewPage.dialogsAdapter.setAllowForwardAsStories(canOpenStories() && getMessagesController().storiesEnabled() && delegate != null && delegate.canSelectStories());
             }
 
             if (AndroidUtilities.isTablet() && openedDialogId.dialogId != 0) {
@@ -4663,11 +4671,13 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
         });
         searchTabsAndFiltersLayout.addView(filtersView, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.MATCH_PARENT, Gravity.TOP));
 
-        floatingButtonStories = new FragmentFloatingButton(context, resourceProvider, true);
-        floatingButtonStories.setContentDescription(getString(R.string.StoryPrivacyButtonPost));
-        floatingButtonStories.setImageResource(R.drawable.outline_fab_story_24);
-        floatingButtonStories.setOnClickListener(v -> openStoriesRecorder());
-        contentView.addView(floatingButtonStories, FragmentFloatingButton.createSubButtonLayoutParams());
+        if (canOpenStories()) {
+            floatingButtonStories = new FragmentFloatingButton(context, resourceProvider, true);
+            floatingButtonStories.setContentDescription(getString(R.string.StoryPrivacyButtonPost));
+            floatingButtonStories.setImageResource(R.drawable.outline_fab_story_24);
+            floatingButtonStories.setOnClickListener(v -> openStoriesRecorder());
+            contentView.addView(floatingButtonStories, FragmentFloatingButton.createSubButtonLayoutParams());
+        }
 
         floatingButton3 = new FragmentFloatingButton(context, resourceProvider);
         contentView.addView(floatingButton3, FragmentFloatingButton.createDefaultLayoutParams());
@@ -5232,8 +5242,10 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
                 return !actionBar.isActionModeShowed() && super.dispatchTouchEvent(ev);
             }
         };
-        dialogStoriesCell.setActionBar(actionBar);
-        dialogStoriesCell.setMenuItemsOffset(isArchive() ? dp(68) : dpf2(16.66f));
+        if (canOpenStories()) {
+            dialogStoriesCell.setActionBar(actionBar);
+            dialogStoriesCell.setMenuItemsOffset(isArchive() ? dp(68) : dpf2(16.66f));
+        }
         dialogStoriesCell.allowGlobalUpdates = false;
         dialogStoriesCell.setVisibility(View.GONE);
         animateToHasStories = false;
@@ -5506,7 +5518,9 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
         };
         updateFilterTabs(true, false);
         rightSlidingDialogContainer.setOpenProgress(0f);
-        contentView.addView(dialogStoriesCell, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, DialogStoriesCell.HEIGHT_IN_DP));
+        if (canOpenStories()) {
+            contentView.addView(dialogStoriesCell, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, DialogStoriesCell.HEIGHT_IN_DP));
+        }
         contentView.addView(rightSlidingDialogContainer, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.MATCH_PARENT));
 
         dialogsActivityStatusLayout = new DialogsActivityStatusLayout(context);
@@ -5533,6 +5547,9 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
     }
 
     private void setStoriesOvercroll(ViewPage viewPage, float storiesOverscroll) {
+        if (!canOpenStories()) {
+            return;
+        }
         if (this.storiesOverscroll == storiesOverscroll) {
             return;
         }
@@ -12456,6 +12473,10 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
         return allowGlobalSearch;
     }
 
+    public boolean canOpenStories() {
+        return StoryViewer.areStoriesEnabled();
+    }
+
     @Override
     public boolean canBeginSlide() {
         if (rightSlidingDialogContainer.hasFragment()) {
@@ -12468,6 +12489,18 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
     }
 
     public void updateStoriesVisibility(boolean animated) {
+        if (!canOpenStories()) {
+            hasStories = false;
+            hasOnlySlefStories = false;
+            animateToHasStories = false;
+            dialogStoriesCellVisible = false;
+            progressToShowStories = 0f;
+            progressToDialogStoriesCell = 0f;
+            if (dialogStoriesCell != null) {
+                dialogStoriesCell.setVisibility(View.GONE);
+            }
+            return;
+        }
         if (dialogStoriesCell == null || storiesVisibilityAnimator != null || rightSlidingDialogContainer != null && rightSlidingDialogContainer.hasFragment() || searchIsShowed || actionBar == null || actionBar.isActionModeShowed() || onlySelect) {
             return;
         }
@@ -12928,6 +12961,9 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
                 ChatActivity chatActivity = new ChatActivity(args);
                 presentFragment(highlightFoundQuote(chatActivity, msg));
             } else if (item.object instanceof StoriesController.SearchStoriesList) {
+                if (!canOpenStories()) {
+                    return;
+                }
                 StoriesController.SearchStoriesList list = (StoriesController.SearchStoriesList) item.object;
                 Bundle args = new Bundle();
                 args.putInt("type", MediaActivity.TYPE_STORIES_SEARCH);
@@ -13224,6 +13260,9 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
     }
 
     private void openStoriesRecorder() {
+        if (!canOpenStories()) {
+            return;
+        }
         if (!storiesEnabled) {
             if (storyPremiumHint != null) {
                 if (storyPremiumHint.shown()) {

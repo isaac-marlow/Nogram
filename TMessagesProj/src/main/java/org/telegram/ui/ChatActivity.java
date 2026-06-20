@@ -2719,6 +2719,10 @@ public class ChatActivity extends BaseFragment implements
                 chatMode = MODE_SUGGESTIONS;
                 isSubscriberSuggestions = !ChatObject.canManageMonoForum(currentAccount, currentChat);
             }
+            if (ChatObject.isChannelAndNotMegaGroup(currentChat)) {
+                MessagesController.showCantOpenAlert(this, LocaleController.getString(R.string.ChannelNotAvailable));
+                return false;
+            }
             dialog_id = -chatId;
             if (ChatObject.isChannel(currentChat)) {
                 if (ChatObject.isNotInChat(currentChat) && !ChatObject.isMonoForum(currentChat) && !isThreadChat() && !isInScheduleMode()) {
@@ -2752,6 +2756,10 @@ public class ChatActivity extends BaseFragment implements
                 } else {
                     return false;
                 }
+            }
+            if (currentUser.bot) {
+                MessagesController.showCantOpenAlert(this, LocaleController.getString(R.string.BotNotAvailable));
+                return false;
             }
             dialog_id = userId;
             botUser = arguments.getString("botUser");
