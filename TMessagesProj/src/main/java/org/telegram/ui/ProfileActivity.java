@@ -852,8 +852,8 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
     private boolean hasFallbackPhoto;
     private boolean hasCustomPhoto;
     private ImageReceiver fallbackImage;
-    private FrameLayout bottomButtonsContainer;
-    private FrameLayout[] bottomButtonContainer;
+//    private FrameLayout bottomButtonsContainer;
+//    private FrameLayout[] bottomButtonContainer;
     private SpannableStringBuilder bottomButtonPostText;
     private SpannableStringBuilder bottomButtonPostTextAlbum;
     private ButtonWithCounterView[] bottomButton;
@@ -2262,18 +2262,18 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
 
             @Override
             public int getBottomOffset(int tag) {
-                if (bottomButtonsContainer == null) {
+//                if (bottomButtonsContainer == null) {
                     return navigationBarHeight + additionFloatingButtonOffset;
-                }
-                final float stories = sharedMediaLayout.getTabVisibility(SharedMediaLayout.TAB_STORIES, true);
+//                }
+                /*final float stories = sharedMediaLayout.getTabVisibility(SharedMediaLayout.TAB_STORIES, true);
                 final float archivedStories = sharedMediaLayout.getTabVisibility(SharedMediaLayout.TAB_ARCHIVED_STORIES, false);
                 return navigationBarHeight + additionFloatingButtonOffset +
-                    (int) (dp(52) - bottomButtonsContainer.getTranslationY() - archivedStories * bottomButtonContainer[1].getTranslationY() - stories * bottomButtonContainer[0].getTranslationY());
+                    (int) (dp(52) - bottomButtonsContainer.getTranslationY() - archivedStories - stories);*/
             }
 
             @Override
             public boolean bottomOffsetAnimated() {
-                return bottomButtonsContainer == null;
+                return true;
             }
         });
 
@@ -3476,7 +3476,7 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
 
         FrameLayout frameLayout = (FrameLayout) fragmentView;
 
-        if (myProfile) {
+        /*if (myProfile) {
             bottomButtonsContainer = new FrameLayout(context);
 
             bottomButtonContainer = new FrameLayout[2];
@@ -3493,7 +3493,7 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
 
                 bottomButtonContainer[a] = new FrameLayout(context);
 
-                    bottomButton[a] = new ButtonWithCounterView(context, resourcesProvider);
+                bottomButton[a] = new ButtonWithCounterView(context, resourcesProvider);
                 bottomButton[a].setRoundRadius(dp(19));
                 bottomButton[a].setUseWrapContent(true);
                 bottomButton[a].setPadding(dp(16), 0, dp(16), 0);
@@ -3504,7 +3504,7 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
                     bottomButtonPostTextAlbum = new SpannableStringBuilder("c");
                     bottomButtonPostTextAlbum.setSpan(new ColoredImageSpan(R.drawable.filled_add_album), 0, 1, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
                     bottomButtonPostTextAlbum.append("  ").append(getString(R.string.StoriesAlbumBottomButtonAddStories));
-                    bottomButton[a].setText(bottomButtonPostText, false);
+                    bottomButton[a].setText(bottomButtonPostText, false)
                 } else {
                     bottomButton[a].setText(getString(R.string.StorySave), false);
                 }
@@ -3647,7 +3647,7 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
                     bottomButtonContainer[a].setTranslationY(dp(72));
                 }
             }
-        }
+        }*/
 
         final ArrayList<Integer> users = chatInfo != null && chatInfo.participants != null && chatInfo.participants.participants.size() > 5 ? sortedUsers : null;
         int initialTab = -1;
@@ -3733,13 +3733,13 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
 
                     int a = getSelectedTab() - SharedMediaLayout.TAB_STORIES;
                     if (a < 0 || a > 1) return;
-                    bottomButtonContainer[a]
+                    /*bottomButtonContainer[a]
                             .animate()
                             .translationY(show || a == 0 && MessagesController.getInstance(currentAccount).storiesEnabled() ? 0 : dp(72))
                             .setDuration(320)
                             .setInterpolator(CubicBezierInterpolator.EASE_OUT_QUINT)
                             .setUpdateListener(anm -> updateBottomButtonY())
-                            .start();
+                            .start();*/
                 }
             }
 
@@ -3751,14 +3751,14 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
                 }
 
                 if (myProfile) {
-                    if (bottomButtonContainer[0] != null) {
+                    /*if (bottomButtonContainer[0] != null) {
                         final float x = sharedMediaLayout.getTabTranslationX(SharedMediaLayout.TAB_STORIES, true);
                         bottomButtonContainer[0].setTranslationX(x);
                     }
                     if (bottomButtonContainer[1] != null) {
                         final float x = sharedMediaLayout.getTabTranslationX(SharedMediaLayout.TAB_ARCHIVED_STORIES, false);
                         bottomButtonContainer[1].setTranslationX(x);
-                    }
+                    }*/
                     checkStoriesButtonText(lastStoriesSelectedCount, true);
                     updateBottomButtonY();
                 }
@@ -3767,9 +3767,9 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
             @Override
             protected void onBottomButtonVisibilityChange() {
                 super.onBottomButtonVisibilityChange();
-                if (myProfile && bottomButtonContainer[0] != null && sharedMediaLayout != null) {
+                /*if (myProfile && bottomButtonContainer[0] != null && sharedMediaLayout != null) {
                     bottomButtonContainer[0].setTranslationY(dp(72) * (1f - sharedMediaLayout.getBottomButtonStoriesVisibility()));
-                }
+                }*/
             }
 
             @Override
@@ -5876,7 +5876,7 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
 
         createBirthdayEffect();
         if (myProfile) {
-            contentView.addView(bottomButtonsContainer, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, 60, Gravity.BOTTOM | Gravity.FILL_HORIZONTAL));
+//            contentView.addView(bottomButtonsContainer, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, 60, Gravity.BOTTOM | Gravity.FILL_HORIZONTAL));
         }
 
         if (actionsView != null && actionsView.hasCall()) {
@@ -6011,11 +6011,11 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
         CubicBezierInterpolator.EASE_OUT_QUINT, 380, true);
 
     private void updateBottomButtonY() {
-        if (bottomButtonsContainer == null) {
+//        if (bottomButtonsContainer == null) {
             return;
-        }
+//        }
 
-        float buttonsTranslationY;
+        /*float buttonsTranslationY;
         if (sharedMediaLayout != null && sharedMediaLayout.isAttachedToWindow()) {
             buttonsTranslationY = dp(72 + 160) - (listView.getMeasuredHeight() - sharedMediaLayout.getY());
         } else {
@@ -6030,7 +6030,7 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
         final Bulletin bulletin = Bulletin.getVisibleBulletin();
         if (bulletin != null) {
             bulletin.updatePosition();
-        }
+        }*/
     }
 
     private void checkCanSendStoryForPosting() {
@@ -16731,7 +16731,7 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
 
         ViewGroup.MarginLayoutParams lp;
 
-        if (bottomButtonsContainer != null) {
+        /*if (bottomButtonsContainer != null) {
             lp = (ViewGroup.MarginLayoutParams) bottomButtonsContainer.getLayoutParams();
 
             final int bottomMargin = navigationBarHeight + additionFloatingButtonOffset;
@@ -16740,7 +16740,7 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
                 bottomButtonsContainer.setLayoutParams(lp);
             }
         }
-
+*/
         if (sharedMediaLayout != null) {
             sharedMediaLayout.setPagesPaddingBottom(navigationBarHeight + additionNavigationBarHeight);
 

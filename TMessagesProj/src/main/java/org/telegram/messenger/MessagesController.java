@@ -21813,6 +21813,7 @@ public class MessagesController extends BaseController implements NotificationCe
         if (bundle == null || fragment == null) {
             return true;
         }
+
         TLRPC.User user = null;
         TLRPC.Chat chat = null;
         long userId = bundle.getLong("user_id", 0);
@@ -21829,6 +21830,15 @@ public class MessagesController extends BaseController implements NotificationCe
         if (user == null && chat == null) {
             return true;
         }
+        if (chat != null && ChatObject.isChannelAndNotMegaGroup(chat)) {
+            showCantOpenAlert(fragment, LocaleController.getString(R.string.ChannelNotAvailable));
+            return false;
+        }
+        if (user != null && user.bot) {
+            showCantOpenAlert(fragment, LocaleController.getString(R.string.BotNotAvailable));
+            return false;
+        }
+
         String reason;
         if (chat != null) {
             reason = getRestrictionReason(chat.restriction_reason);
@@ -21930,12 +21940,9 @@ public class MessagesController extends BaseController implements NotificationCe
             reason = getRestrictionReason(chat.restriction_reason);
         } else {
             reason = getRestrictionReason(user.restriction_reason);
-            if (type != 3 && user.bot) {
-                type = 1;
-                BaseFragment lastFragment = LaunchActivity.getLastFragment();
-                if (lastFragment.getLastStoryViewer() == null) {
-                    closeLast = true;
-                }
+            if (user.bot && type != 0) {
+                showCantOpenAlert(fragment, LocaleController.getString(R.string.BotNotAvailable));
+                return;
             }
         }
         boolean doNotCloseLast = false;
@@ -21948,6 +21955,10 @@ public class MessagesController extends BaseController implements NotificationCe
         } else {
             Bundle args = new Bundle();
             if (chat != null) {
+                if (type != 0 && ChatObject.isChannelAndNotMegaGroup(chat)) {
+                    showCantOpenAlert(fragment, LocaleController.getString(R.string.ChannelNotAvailable));
+                    return;
+                }
                 args.putLong("chat_id", chat.id);
             } else {
                 args.putLong("user_id", user.id);

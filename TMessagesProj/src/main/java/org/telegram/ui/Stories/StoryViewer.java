@@ -97,6 +97,7 @@ import java.util.ArrayList;
 public class StoryViewer implements NotificationCenter.NotificationCenterDelegate, BaseFragment.AttachedSheet, IPipSourceDelegate {
 
     public static boolean animationInProgress;
+    private static final boolean STORIES_ENABLED = false;
 
     public boolean USE_SURFACE_VIEW = SharedConfig.useSurfaceInStories;
     public boolean ATTACH_TO_FRAGMENT = true;
@@ -265,6 +266,10 @@ public class StoryViewer implements NotificationCenter.NotificationCenterDelegat
         globalInstances.clear();
     }
 
+    public static boolean areStoriesEnabled() {
+        return STORIES_ENABLED;
+    }
+
     private void setLongPressed(boolean b) {
         if (isLongpressed != b) {
             isLongpressed = b;
@@ -375,6 +380,15 @@ public class StoryViewer implements NotificationCenter.NotificationCenterDelegat
         open(UserConfig.selectedAccount, context, storyItem, peerIds, position, storiesList, userStories, placeProvider, reversed);
     }
     public void open(int account, Context context, TL_stories.StoryItem storyItem, ArrayList<Long> peerIds, int position, StoriesController.StoriesList storiesList, TL_stories.PeerStories userStories, PlaceProvider placeProvider, boolean reversed) {
+        if (!areStoriesEnabled()) {
+            doOnAnimationReadyRunnables.clear();
+            boolean globalInstance = globalInstances.contains(this);
+            closeGlobalInstances();
+            if (isShowing && !globalInstance) {
+                close(false);
+            }
+            return;
+        }
         if (!isContextSafe(context)) {
             doOnAnimationReadyRunnables.clear();
             return;

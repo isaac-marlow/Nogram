@@ -772,6 +772,10 @@ public class DialogCell extends BaseCell implements StoriesListPlaceProvider.Ava
         return false;
     }
 
+    private boolean shouldHideSubtitle() {
+        return customDialog == null && isDialogCell;
+    }
+
     private void checkGroupCall() {
         hasCall = chat != null && chat.call_active && chat.call_not_empty;
         chatCallProgress = hasCall ? 1.0f : 0.0f;
@@ -2533,6 +2537,18 @@ public class DialogCell extends BaseCell implements StoriesListPlaceProvider.Ava
                     messageString = s;
                 }
             }
+        }
+        if (shouldHideSubtitle()) {
+            messageString = "";
+            messageNameString = null;
+            typingString = "";
+            buttonString = null;
+            thumbsCount = 0;
+            for (int i = 0; i < thumbImageSeen.length; i++) {
+                thumbImageSeen[i] = false;
+            }
+            drawForwardIcon = false;
+            drawGiftIcon = false;
         }
         messageWidth = Math.max(dp(12), messageWidth);
         buttonTop = dp(useForceThreeLines || SharedConfig.useThreeLinesLayout ? 58 : 62);

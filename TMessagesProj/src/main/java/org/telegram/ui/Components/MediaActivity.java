@@ -57,6 +57,7 @@ import org.telegram.ui.Components.FloatingDebug.FloatingDebugController;
 import org.telegram.ui.Components.FloatingDebug.FloatingDebugProvider;
 import org.telegram.ui.Components.Paint.ShapeDetector;
 import org.telegram.ui.ProfileActivity;
+import org.telegram.ui.Stories.StoryViewer;
 import org.telegram.ui.Stories.recorder.ButtonWithCounterView;
 
 import java.util.ArrayList;
@@ -112,6 +113,9 @@ public class MediaActivity extends BaseFragment implements SharedMediaLayout.Sha
     @Override
     public boolean onFragmentCreate() {
         type = getArguments().getInt("type", TYPE_MEDIA);
+        if (isStoriesType() && !StoryViewer.areStoriesEnabled()) {
+            return false;
+        }
         dialogId = getArguments().getLong("dialog_id");
         topicId = getArguments().getLong("topic_id", 0);
         hashtag = getArguments().getString("hashtag", "");
@@ -139,6 +143,10 @@ public class MediaActivity extends BaseFragment implements SharedMediaLayout.Sha
         }
         this.sharedMediaPreloader.addDelegate(this);
         return super.onFragmentCreate();
+    }
+
+    private boolean isStoriesType() {
+        return type == TYPE_STORIES || type == TYPE_ARCHIVED_CHANNEL_STORIES || type == TYPE_STORIES_SEARCH;
     }
 
     @Override
