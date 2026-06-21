@@ -192,8 +192,8 @@ public class EmojiView extends FrameLayout implements
 
 
     private final static int TAB_EMOJI = 0;
-    private final static int TAB_GIFS = 1;
-    private final static int TAB_STICKERS = 2;
+//    private final static int TAB_GIFS = 1;
+//    private final static int TAB_STICKERS = 2;
 
     public int emojiCacheType = AnimatedEmojiDrawable.CACHE_TYPE_KEYBOARD;
 
@@ -293,11 +293,11 @@ public class EmojiView extends FrameLayout implements
         for (int i = 0; i < allTabs.size(); i++) {
             if (allTabs.get(i).type == TAB_EMOJI && allowEmoji) {
                 currentTabs.add(allTabs.get(i));
-            } if (allTabs.get(i).type == TAB_GIFS && allowGifs) {
+            } /*if (allTabs.get(i).type == TAB_GIFS && allowGifs) {
                 currentTabs.add(allTabs.get(i));
             }  if (allTabs.get(i).type == TAB_STICKERS && allowStickers) {
                 currentTabs.add(allTabs.get(i));
-            }
+            }*/
         }
         if (typeTabs != null) {
             AndroidUtilities.updateViewVisibilityAnimated(typeTabs, currentTabs.size() > 1, 1, animated);
@@ -1980,7 +1980,7 @@ public class EmojiView extends FrameLayout implements
 
         if (needStickers) {
             if (needGif) {
-                gifContainer = new FrameLayout(context) {
+                /*gifContainer = new FrameLayout(context) {
                     @Override
                     protected boolean drawChild(Canvas canvas, View child, long drawingTime) {
                         if (child == gifGridView) {
@@ -1992,13 +1992,13 @@ public class EmojiView extends FrameLayout implements
                         }
                         return super.drawChild(canvas, child, drawingTime);
                     }
-                };
-                Tab gifTab = new Tab();
+                };*/
+                /*Tab gifTab = new Tab();
                 gifTab.type = TAB_GIFS;
                 gifTab.view = gifContainer;
                 allTabs.add(gifTab);
-
-                gifGridView = new RecyclerListView(context) {
+*/
+                /*gifGridView = new RecyclerListView(context) {
 
                     private boolean ignoreLayout;
                     private boolean wasMeasured;
@@ -2039,7 +2039,7 @@ public class EmojiView extends FrameLayout implements
                         }
                         super.requestLayout();
                     }
-                };
+                };*/
                 gifGridView.setClipToPadding(false);
                 gifGridView.setLayoutManager(gifLayoutManager = new GifLayoutManager(context));
                 gifGridView.addItemDecoration(new RecyclerView.ItemDecoration() {
@@ -2326,10 +2326,10 @@ public class EmojiView extends FrameLayout implements
             stickersGridView.setPadding(0, AndroidUtilities.dp(36), 0, AndroidUtilities.dp(44));
             stickersGridView.setClipToPadding(false);
 
-            Tab stickersTabHolder = new Tab();
+            /*Tab stickersTabHolder = new Tab();
             stickersTabHolder.type = TAB_STICKERS;
             stickersTabHolder.view = stickersContainer;
-            allTabs.add(stickersTabHolder);
+            allTabs.add(stickersTabHolder);*/
             stickersSearchGridAdapter = new StickersSearchGridAdapter(context);
             stickersGridView.setAdapter(stickersGridAdapter = new StickersGridAdapter(context));
             stickersGridView.setOnTouchListener((v, event) -> ContentPreviewViewer.getInstance().onTouch(event, stickersGridView, EmojiView.this.getMeasuredHeight(), stickersOnItemClickListener, contentPreviewViewerDelegate, resourcesProvider));
