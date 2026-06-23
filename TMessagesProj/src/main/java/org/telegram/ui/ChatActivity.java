@@ -646,6 +646,7 @@ public class ChatActivity extends BaseFragment implements
     private MessageObject hintMessageObject;
     private int hintMessageType;
     private MessageObject hint2MessageObject;
+    private UsageWarningView usageWarningView;
 
     private ChatActivitySearchContainer messagesSearchListContainer;
     public RecyclerListView messagesSearchListView;
@@ -981,6 +982,10 @@ public class ChatActivity extends BaseFragment implements
     private boolean hasBotWebView;
     private long chatEnterTime;
     private long chatLeaveTime;
+
+    private long activeUsageTime = 0;
+    private long usageSessionStart = 0;
+    private boolean usageWarningShown = false;
 
     private boolean locationAlertShown;
 
@@ -7460,6 +7465,24 @@ public class ChatActivity extends BaseFragment implements
             fragmentLocationContextView.isInsideBubble = true;
             fragmentContextViewWrapper.addView(fragmentContextView);
             fragmentLocationContextViewWrapper.addView(fragmentLocationContextView);
+
+            usageWarningView = new UsageWarningView(context);
+            usageWarningView.setVisibility(View.GONE);
+
+            fragmentContextViewWrapper.addView(
+                usageWarningView,
+                LayoutHelper.createFrame(
+                    LayoutHelper.MATCH_PARENT,
+                    LayoutHelper.WRAP_CONTENT
+                )
+            );
+
+            private void showUsageWarning() {
+                 if (usageWarningView != null) {
+                    usageWarningView.setVisibility(View.VISIBLE);
+                 }
+            }
+
             fragmentContextView.setEnabled(!inPreviewMode);
             fragmentLocationContextView.setEnabled(!inPreviewMode);
 
@@ -29634,6 +29657,23 @@ public class ChatActivity extends BaseFragment implements
             chatLeaveTime = 0;
         }
 
+        usageSessionStart = System.currentTimeMillis();
+
+        AndroidUtilities.runOnUIThread(() -> {
+                long currentTime = activeUsageTime + (System.currentTimeMillis() - usageSessionStart);
+
+                if (!usageWarningShown && currentTime >= 30 * 1000) {
+
+                        usageWarningShown = true;
+
+                         BulletinFactory.of(this).createSimpleBulletin(
+                                                 R.raw.contact_check,
+                                                 "You've been using Nogram for 5 minutes"
+                                                     )
+                                                 .show();
+                     }
+            }, 5000);
+
         if (startVideoEdit != null) {
             AndroidUtilities.runOnUIThread(() -> {
                 openVideoEditor(startVideoEdit, null);
@@ -29724,6 +29764,14 @@ public class ChatActivity extends BaseFragment implements
         MediaController.getInstance().stopRaiseToEarSensors(this, true, true);
         paused = true;
         wasPaused = true;
+
+        if (usageSessionStart != 0) {
+                 activeUsageTime += System.currentTimeMillis() - usageSessionStart;
+                 usageSessionStart = 0;
+        }
+
+        android.util.Log.d("NOGRAM", "usage = " + activeUsageTime);
+
         if (chatMode == 0) {
             getNotificationsController().setOpenedDialogId(0, 0);
         }
