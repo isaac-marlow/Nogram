@@ -2719,7 +2719,7 @@ public class ChatActivity extends BaseFragment implements
                 chatMode = MODE_SUGGESTIONS;
                 isSubscriberSuggestions = !ChatObject.canManageMonoForum(currentAccount, currentChat);
             }
-            if (ChatObject.isChannelAndNotMegaGroup(currentChat)) {
+            if (ChatObject.isChannelAndNotMegaGroup(currentChat) && !MessagesController.isOpenBlockedChatWhitelisted(currentChat)) {
                 MessagesController.showCantOpenAlert(this, LocaleController.getString(R.string.ChannelNotAvailable));
                 return false;
             }
@@ -2757,7 +2757,7 @@ public class ChatActivity extends BaseFragment implements
                     return false;
                 }
             }
-            if (currentUser.bot) {
+            if (currentUser.bot && !MessagesController.isOpenBlockedChatWhitelisted(currentUser)) {
                 MessagesController.showCantOpenAlert(this, LocaleController.getString(R.string.BotNotAvailable));
                 return false;
             }

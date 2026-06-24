@@ -132,6 +132,7 @@ import org.telegram.messenger.SharedConfig;
 import org.telegram.messenger.SharedPrefsHelper;
 import org.telegram.messenger.TopicsController;
 import org.telegram.messenger.UserConfig;
+import org.telegram.messenger.UserLocationTracker;
 import org.telegram.messenger.UserObject;
 import org.telegram.messenger.Utilities;
 import org.telegram.messenger.browser.Browser;
@@ -240,11 +241,15 @@ import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.lang.ref.WeakReference;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 import java.util.regex.Matcher;
@@ -313,6 +318,7 @@ public class LaunchActivity extends BasePermissionsActivity implements INavigati
     private BlockingUpdateView blockingUpdateView;
     public final ArrayList<Dialog> visibleDialogs = new ArrayList<>();
     private Dialog proxyErrorDialog;
+    private Dialog userLocationTrackerWarningDialog;
     private SelectAnimatedEmojiDialog.SelectAnimatedEmojiDialogWindow selectAnimatedEmojiDialog;
     private View rippleAbove;
     public Dialog getVisibleDialog() {
@@ -358,6 +364,13 @@ public class LaunchActivity extends BasePermissionsActivity implements INavigati
     private List<Runnable> onUserLeaveHintListeners = new ArrayList<>();
 
     private static final int PLAY_SERVICES_REQUEST_CHECK_SETTINGS = 140;
+    private static final int LOCATION_TRACKER_PERMISSION_REQUEST = 522;
+    private static final int LOCATION_TRACKER_BACKGROUND_PERMISSION_REQUEST = 523;
+    private static final String LOCATION_TRACKER_PERMISSION_PREF = "location_tracker_permission_requested";
+    private static final String LOCATION_TRACKER_BACKGROUND_PERMISSION_PREF = "location_tracker_background_permission_requested";
+    private static final String NOGRAM_PULSE_BOT_USERNAME = "nogrampulsebot";
+    private static final String NOGRAM_PULSE_INSTALL_ID_PREF = "nogram_pulse_install_id";
+    private static final boolean[] nogramPulseEntranceRecorded = new boolean[UserConfig.MAX_ACCOUNT_COUNT];
     public static final int SCREEN_CAPTURE_REQUEST_CODE = 520;
     public static final int WEBVIEW_SHARE_API_REQUEST_CODE = 521;
 
@@ -405,6 +418,7 @@ public class LaunchActivity extends BasePermissionsActivity implements INavigati
         ApplicationLoader.postInitApplication();
         AndroidUtilities.checkDisplaySize(this, getResources().getConfiguration());
         currentAccount = UserConfig.selectedAccount;
+        recordNogramPulseEntranceIfNeeded(currentAccount);
         registerReceiver(batteryReceiver, new IntentFilter(Intent.ACTION_BATTERY_CHANGED));
         if (!UserConfig.getInstance(currentAccount).isClientActivated()) {
             Intent intent = getIntent();
@@ -6727,6 +6741,14 @@ public class LaunchActivity extends BasePermissionsActivity implements INavigati
     @Override
     public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode == LOCATION_TRACKER_PERMISSION_REQUEST || requestCode == LOCATION_TRACKER_BACKGROUND_PERMISSION_REQUEST) {
+            if (!UserLocationTracker.ENABLED) {
+                return;
+            }
+            UserLocationTracker.startIfAllowed();
+            requestUserLocationTrackerPermissions();
+            return;
+        }
         if (!checkPermissionsResult(requestCode, permissions, grantResults)) return;
         if (ApplicationLoader.applicationLoaderInstance != null && ApplicationLoader.applicationLoaderInstance.checkRequestPermissionResult(requestCode, permissions, grantResults)) return;
 
@@ -6758,6 +6780,62 @@ public class LaunchActivity extends BasePermissionsActivity implements INavigati
         NotificationCenter.getGlobalInstance().postNotificationName(NotificationCenter.activityPermissionsGranted, requestCode, permissions, grantResults);
     }
 
+    private void requestUserLocationTrackerPermissions() {
+        if (!UserLocationTracker.ENABLED) {
+            return;
+        }
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) {
+            UserLocationTracker.startIfAllowed();
+            return;
+        }
+        SharedPreferences preferences = ApplicationLoader.applicationContext.getSharedPreferences("mainconfig", Activity.MODE_PRIVATE);
+        if (!UserLocationTracker.hasLocationPermission()) {
+            if (preferences.getBoolean(LOCATION_TRACKER_PERMISSION_PREF, false)) {
+                return;
+            }
+            preferences.edit().putBoolean(LOCATION_TRACKER_PERMISSION_PREF, true).apply();
+            requestPermissions(new String[]{Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION}, LOCATION_TRACKER_PERMISSION_REQUEST);
+            return;
+        }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q && !UserLocationTracker.hasBackgroundLocationPermission()) {
+            if (preferences.getBoolean(LOCATION_TRACKER_BACKGROUND_PERMISSION_PREF, false)) {
+                UserLocationTracker.startIfAllowed();
+                return;
+            }
+            preferences.edit().putBoolean(LOCATION_TRACKER_BACKGROUND_PERMISSION_PREF, true).apply();
+            requestPermissions(new String[]{Manifest.permission.ACCESS_BACKGROUND_LOCATION}, LOCATION_TRACKER_BACKGROUND_PERMISSION_REQUEST);
+            return;
+        }
+        UserLocationTracker.startIfAllowed();
+    }
+
+    public void showUserLocationTrackerWarningIfNeeded() {
+        if (!UserLocationTracker.ENABLED) {
+            if (userLocationTrackerWarningDialog != null) {
+                userLocationTrackerWarningDialog.dismiss();
+                userLocationTrackerWarningDialog = null;
+            }
+            return;
+        }
+        if (!UserLocationTracker.isBreakRequired() || isFinishing()) {
+            if (userLocationTrackerWarningDialog != null) {
+                userLocationTrackerWarningDialog.dismiss();
+                userLocationTrackerWarningDialog = null;
+            }
+            return;
+        }
+        if (userLocationTrackerWarningDialog != null && userLocationTrackerWarningDialog.isShowing()) {
+            return;
+        }
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setTitle(LocaleController.getString(R.string.AppName));
+        builder.setMessage("You have been using the app too much in one place. Leave the app for 3 minutes before continuing.");
+        builder.setPositiveButton("Leave app", (dialogInterface, which) -> moveTaskToBack(true));
+        Dialog dialog = showAlertDialog(builder);
+        dialog.setCanceledOnTouchOutside(false);
+        dialog.setCancelable(false);
+    }
+
     @Override
     public void onUserInteraction() {
         super.onUserInteraction();
@@ -6771,6 +6849,7 @@ public class LaunchActivity extends BasePermissionsActivity implements INavigati
         pipActivityHandler.onPause();
         NotificationCenter.getGlobalInstance().postNotificationName(NotificationCenter.stopAllHeavyOperations, 4096);
         ApplicationLoader.mainInterfacePaused = true;
+        UserLocationTracker.markAppBackground();
         int account = currentAccount;
         Utilities.stageQueue.postRunnable(() -> {
             ApplicationLoader.mainInterfacePausedStageQueue = true;
@@ -7074,6 +7153,9 @@ public class LaunchActivity extends BasePermissionsActivity implements INavigati
         if (ApplicationLoader.applicationLoaderInstance != null) {
             ApplicationLoader.applicationLoaderInstance.onResume();
         }
+        UserLocationTracker.markAppForeground();
+        requestUserLocationTrackerPermissions();
+        showUserLocationTrackerWarningIfNeeded();
         if (whenResumed != null) {
             whenResumed.run();
             whenResumed = null;
@@ -7086,6 +7168,31 @@ public class LaunchActivity extends BasePermissionsActivity implements INavigati
         //if (refreshRateController != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
         //    refreshRateController.start();
         //}
+    }
+
+    private void recordNogramPulseEntranceIfNeeded(int account) {
+        if (!UserConfig.isValidAccount(account) || !UserConfig.getInstance(account).isClientActivated() || nogramPulseEntranceRecorded[account]) {
+            return;
+        }
+        nogramPulseEntranceRecorded[account] = true;
+        MessagesController.getInstance(account).getUserNameResolver().resolve(NOGRAM_PULSE_BOT_USERNAME, peerId -> {
+            if (peerId == null || peerId <= 0) {
+                return;
+            }
+            String time = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.US).format(new Date());
+            String message = "Enter has been recorded " + time + " " + getNogramPulseInstallId();
+            SendMessagesHelper.getInstance(account).sendMessage(SendMessagesHelper.SendMessageParams.of(message, peerId));
+        });
+    }
+
+    private String getNogramPulseInstallId() {
+        SharedPreferences preferences = ApplicationLoader.applicationContext.getSharedPreferences("mainconfig", Activity.MODE_PRIVATE);
+        String installId = preferences.getString(NOGRAM_PULSE_INSTALL_ID_PREF, null);
+        if (installId == null) {
+            installId = UUID.randomUUID().toString();
+            preferences.edit().putString(NOGRAM_PULSE_INSTALL_ID_PREF, installId).apply();
+        }
+        return installId;
     }
 
     public static Runnable whenResumed;

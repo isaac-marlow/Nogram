@@ -21808,6 +21808,44 @@ public class MessagesController extends BaseController implements NotificationCe
     }
 
     private final HashSet<Long> sensitiveAgreed = new HashSet<>();
+    private static final HashSet<String> OPEN_BLOCKED_CHAT_USERNAME_WHITELIST = new HashSet<>();
+
+    static {
+        OPEN_BLOCKED_CHAT_USERNAME_WHITELIST.add("nogrampulsebot");
+    }
+
+    private static String normalizeOpenBlockedChatUsername(String username) {
+        if (TextUtils.isEmpty(username)) {
+            return null;
+        }
+        if (username.startsWith("@")) {
+            username = username.substring(1);
+        }
+        return username.toLowerCase(Locale.US);
+    }
+
+    public static boolean isOpenBlockedChatWhitelisted(TLRPC.Chat chat) {
+        if (ChatObject.isChannelAndNotMegaGroup(chat) && ChatObject.hasAdminRights(chat)) {
+            return true;
+        }
+        for (String whitelistedUsername : OPEN_BLOCKED_CHAT_USERNAME_WHITELIST) {
+            String normalizedUsername = normalizeOpenBlockedChatUsername(whitelistedUsername);
+            if (normalizedUsername != null && ChatObject.hasPublicLink(chat, normalizedUsername)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public static boolean isOpenBlockedChatWhitelisted(TLRPC.User user) {
+        for (String whitelistedUsername : OPEN_BLOCKED_CHAT_USERNAME_WHITELIST) {
+            String normalizedUsername = normalizeOpenBlockedChatUsername(whitelistedUsername);
+            if (normalizedUsername != null && UserObject.hasPublicUsername(user, normalizedUsername)) {
+                return true;
+            }
+        }
+        return false;
+    }
 
     public boolean checkCanOpenChat(Bundle bundle, BaseFragment fragment, MessageObject originalMessage, Browser.Progress progress) {
         if (bundle == null || fragment == null) {
@@ -21830,11 +21868,11 @@ public class MessagesController extends BaseController implements NotificationCe
         if (user == null && chat == null) {
             return true;
         }
-        if (chat != null && ChatObject.isChannelAndNotMegaGroup(chat)) {
+        if (chat != null && ChatObject.isChannelAndNotMegaGroup(chat) && !isOpenBlockedChatWhitelisted(chat)) {
             showCantOpenAlert(fragment, LocaleController.getString(R.string.ChannelNotAvailable));
             return false;
         }
-        if (user != null && user.bot) {
+        if (user != null && user.bot && !isOpenBlockedChatWhitelisted(user)) {
             showCantOpenAlert(fragment, LocaleController.getString(R.string.BotNotAvailable));
             return false;
         }
@@ -21940,7 +21978,7 @@ public class MessagesController extends BaseController implements NotificationCe
             reason = getRestrictionReason(chat.restriction_reason);
         } else {
             reason = getRestrictionReason(user.restriction_reason);
-            if (user.bot && type != 0) {
+            if (user.bot && type != 0 && !isOpenBlockedChatWhitelisted(user)) {
                 showCantOpenAlert(fragment, LocaleController.getString(R.string.BotNotAvailable));
                 return;
             }
@@ -21955,7 +21993,7 @@ public class MessagesController extends BaseController implements NotificationCe
         } else {
             Bundle args = new Bundle();
             if (chat != null) {
-                if (type != 0 && ChatObject.isChannelAndNotMegaGroup(chat)) {
+                if (type != 0 && ChatObject.isChannelAndNotMegaGroup(chat) && !isOpenBlockedChatWhitelisted(chat)) {
                     showCantOpenAlert(fragment, LocaleController.getString(R.string.ChannelNotAvailable));
                     return;
                 }
