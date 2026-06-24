@@ -125,6 +125,7 @@ import org.telegram.messenger.NotificationCenter;
 import org.telegram.messenger.NotificationsController;
 import org.telegram.messenger.R;
 import org.telegram.messenger.SharedConfig;
+import org.telegram.messenger.UserLocationTracker;
 import org.telegram.messenger.UserConfig;
 import org.telegram.messenger.UserObject;
 import org.telegram.messenger.Utilities;
@@ -497,6 +498,8 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
     private boolean downloadsItemVisible;
     public ActionBarMenuItem searchItem;
     private ActionBarMenuItem optionsItem;
+    private ActionBarMenuItem locationCountdownItem;
+    private TextView locationCountdownTextView;
     private ActionBarMenuItem speedItem;
     public static boolean switchingTheme;
     private ActionBarMenuItem doneItem;
@@ -657,6 +660,14 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
     private boolean closeFragment;
 
     private DialogsActivityDelegate delegate;
+
+    private final Runnable locationCountdownRunnable = new Runnable() {
+        @Override
+        public void run() {
+            updateLocationCountdownItem();
+            AndroidUtilities.runOnUIThread(this, 1000);
+        }
+    };
 
     private ArrayList<MediaController.PhotoEntry> sharedMediaEntries;
     private String sharedLink;
@@ -2947,8 +2958,6 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
         }
     }
 
-    private Drawable premiumStar;
-
     public void updateStatus(TLRPC.User user, boolean animated) {
         if (dialogStoriesCell != null) {
             dialogStoriesCell.updateStatus(user, animated);
@@ -2965,30 +2974,6 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
             if (isCollectible) {
                 statusDrawableGiftId = ((TLRPC.TL_emojiStatusCollectible) user.emoji_status).collectible_id;
             }
-            actionBar.setRightDrawableOnClick(e -> {
-                if (dialogStoriesCellVisible && dialogStoriesCell != null && !dialogStoriesCell.isExpanded()) {
-                    scrollToTop(true, true);
-                    return;
-                }
-                showSelectStatusDialog();
-            });
-            SelectAnimatedEmojiDialog.preload(currentAccount);
-        } else if (user != null && MessagesController.getInstance(currentAccount).isPremiumUser(user)) {
-            if (premiumStar == null) {
-                premiumStar = getContext().getResources().getDrawable(R.drawable.msg_premium_liststar).mutate();
-                premiumStar = new AnimatedEmojiDrawable.WrapSizeDrawable(premiumStar, dp(18), dp(18)) {
-                    @Override
-                    public void draw(@NonNull Canvas canvas) {
-                        canvas.save();
-                        canvas.translate(dp(-2), dp(1));
-                        super.draw(canvas);
-                        canvas.restore();
-                    }
-                };
-            }
-            premiumStar.setColorFilter(new PorterDuffColorFilter(getThemedColor(Theme.key_profile_verifiedBackground), PorterDuff.Mode.MULTIPLY));
-            statusDrawable.set(premiumStar, animated);
-            statusDrawable.setParticles(false, animated);
             actionBar.setRightDrawableOnClick(e -> {
                 if (dialogStoriesCellVisible && dialogStoriesCell != null && !dialogStoriesCell.isExpanded()) {
                     scrollToTop(true, true);
@@ -3034,6 +3019,7 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
             AndroidUtilities.cancelRunOnUIThread(shareLinkSearchRunnable);
             shareLinkSearchRunnable = null;
         }
+        AndroidUtilities.cancelRunOnUIThread(locationCountdownRunnable);
         if (undoView[0] != null) {
             undoView[0].hide(true, 0);
         }
@@ -3385,6 +3371,16 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
         fragmentSearchFieldWatcher.setDoNotCloseAfterFieldEmpty();
 
         if (initialDialogsType == DIALOGS_TYPE_DEFAULT) {
+            locationCountdownItem = menu.addItemWithWidth(-48, 0, dp(56));
+            locationCountdownTextView = new TextView(context);
+            locationCountdownTextView.setGravity(Gravity.CENTER);
+            locationCountdownTextView.setSingleLine(true);
+            locationCountdownTextView.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 14);
+            locationCountdownTextView.setTypeface(AndroidUtilities.bold());
+            locationCountdownTextView.setTextColor(getThemedColor(Theme.key_actionBarDefaultIcon));
+            locationCountdownItem.addView(locationCountdownTextView, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.MATCH_PARENT, Gravity.CENTER));
+            locationCountdownItem.setVisibility(View.GONE);
+
             optionsItem = menu.addItem(4, R.drawable.ic_ab_other);
             optionsItem.setContentDescription(LocaleController.getString(R.string.AccDescrMoreOptions));
             optionsItem.setOnClickListener(v -> {
@@ -7094,6 +7090,8 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
                 }
             }
         }
+        AndroidUtilities.cancelRunOnUIThread(locationCountdownRunnable);
+        locationCountdownRunnable.run();
     }
 
     @Override
@@ -7135,6 +7133,7 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
         if (undoView[0] != null) {
             undoView[0].hide(true, 0);
         }
+        AndroidUtilities.cancelRunOnUIThread(locationCountdownRunnable);
         Bulletin.removeDelegate(this);
 
         if (viewPages != null) {
@@ -13757,6 +13756,22 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
         fragmentSearchField.editText.setHint(hint);
     }
 
+    private void updateLocationCountdownItem() {
+        if (locationCountdownTextView == null) {
+            return;
+        }
+        long remainingMs = UserLocationTracker.getCountdownRemainingMs();
+        if (remainingMs >= 0) {
+            long remainingSeconds = Math.max(0, (remainingMs + 999) / 1000);
+            long minutes = remainingSeconds / 60;
+            long seconds = remainingSeconds % 60;
+            locationCountdownTextView.setText(String.format(java.util.Locale.US, "%d:%02d", minutes, seconds));
+        } else {
+            locationCountdownTextView.setText("");
+        }
+        checkUi_itemLocationCountdownVisibility();
+    }
+
     private void checkUi_menuItems() {
         checkUi_itemBackButtonVisibility();
         checkUi_itemOptionsVisibility();
@@ -13764,6 +13779,7 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
         checkUi_itemSpeedVisibility();
         checkUi_itemPasscodeVisibility();
         checkUi_itemSearchVisibility();
+        checkUi_itemLocationCountdownVisibility();
     }
 
     private void checkUi_itemBackButtonVisibility() {
@@ -13784,6 +13800,18 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
         final float factor3 = 1f - animatorDoneButtonVisible.getFloatValue();
         final float factor = factor1 * factor2 * factor3;
         FragmentFloatingButton.setAnimatedVisibility(optionsItem, factor);
+    }
+
+    private void checkUi_itemLocationCountdownVisibility() {
+        if (locationCountdownItem == null) {
+            return;
+        }
+        final float factor0 = UserLocationTracker.getCountdownRemainingMs() >= 0 ? 1 : 0;
+        final float factor1 = 1f - animatorSearchVisible.getFloatValue();
+        final float factor2 = 1f - getRightSlidingProgress();
+        final float factor3 = 1f - animatorDoneButtonVisible.getFloatValue();
+        final float factor = factor0 * factor1 * factor2 * factor3;
+        FragmentFloatingButton.setAnimatedVisibility(locationCountdownItem, factor);
     }
 
     private void checkUi_itemPasscodeVisibility() {
