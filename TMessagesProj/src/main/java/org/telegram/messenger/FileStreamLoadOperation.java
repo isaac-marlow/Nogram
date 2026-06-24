@@ -90,6 +90,9 @@ public class FileStreamLoadOperation extends BaseDataSource implements FileLoadO
         TLRPC.TL_documentAttributeFilename filename = new TLRPC.TL_documentAttributeFilename();
         filename.file_name = uri.getQueryParameter("name");
         document.attributes.add(filename);
+        if (!BuildVars.CAN_DOWNLOAD_APP_UPDATE && FileLoader.isApkDocument(document)) {
+            throw new IOException("APK downloads are disabled");
+        }
         if (document.mime_type.startsWith("video")) {
             document.attributes.add(new TLRPC.TL_documentAttributeVideo());
         } else if (document.mime_type.startsWith("audio")) {

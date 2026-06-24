@@ -808,6 +808,9 @@ public class FileLoader extends BaseController {
         if (document == null) {
             return;
         }
+        if (!BuildVars.CAN_DOWNLOAD_APP_UPDATE && isApkDocument(document)) {
+            return;
+        }
         if (cacheType == 0 && document.key != null) {
             cacheType = 1;
         }
@@ -815,11 +818,17 @@ public class FileLoader extends BaseController {
     }
 
     public void loadFile(WebFile document, int priority, int cacheType) {
+        if (!BuildVars.CAN_DOWNLOAD_APP_UPDATE && isApkWebFile(document)) {
+            return;
+        }
         loadFile(null, null, document, null, null, null, null, 0, priority, cacheType);
     }
 
 
     private FileLoadOperation loadFileInternal(final TLRPC.Document document, final SecureDocument secureDocument, final WebFile webDocument, TLRPC.TL_fileLocationToBeDeprecated location, final ImageLocation imageLocation, Object parentObject, final String locationExt, final long locationSize, int priority, FileLoadOperationStream stream, final long streamOffset, boolean streamPriority, final int cacheType) {
+        if (!BuildVars.CAN_DOWNLOAD_APP_UPDATE && (isApkDocument(document) || isApkWebFile(webDocument))) {
+            return null;
+        }
         String fileName;
         if (location != null) {
             fileName = getAttachFileName(location, locationExt);
@@ -1152,6 +1161,9 @@ public class FileLoader extends BaseController {
     }
 
     private void loadFile(final TLRPC.Document document, final SecureDocument secureDocument, final WebFile webDocument, TLRPC.TL_fileLocationToBeDeprecated location, final ImageLocation imageLocation, final Object parentObject, final String locationExt, final long locationSize, final int priority, final int cacheType) {
+        if (!BuildVars.CAN_DOWNLOAD_APP_UPDATE && (isApkDocument(document) || isApkWebFile(webDocument))) {
+            return;
+        }
         String fileName;
         if (location != null) {
             fileName = getAttachFileName(location, locationExt);
@@ -1176,6 +1188,9 @@ public class FileLoader extends BaseController {
     }
 
     protected FileLoadOperation loadStreamFile(final FileLoadOperationStream stream, final TLRPC.Document document, final ImageLocation location, final Object parentObject, final long offset, final boolean priority, int loadingPriority, int cacheType) {
+        if (!BuildVars.CAN_DOWNLOAD_APP_UPDATE && isApkDocument(document)) {
+            return null;
+        }
         final CountDownLatch semaphore = new CountDownLatch(1);
         final FileLoadOperation[] result = new FileLoadOperation[1];
         fileLoaderQueue.postRunnable(() -> {
@@ -1585,6 +1600,28 @@ public class FileLoader extends BaseController {
         }
         fileName = fixFileName(fileName);
         return fileName != null ? fileName : "";
+    }
+
+    public static boolean isApkDocument(TLRPC.Document document) {
+        if (document == null) {
+            return false;
+        }
+        return isApkMimeType(document.mime_type) || isApkFileName(getDocumentFileName(document));
+    }
+
+    public static boolean isApkWebFile(WebFile document) {
+        if (document == null) {
+            return false;
+        }
+        return isApkMimeType(document.mime_type) || isApkFileName(document.url);
+    }
+
+    public static boolean isApkMimeType(String mimeType) {
+        return "application/vnd.android.package-archive".equals(mimeType);
+    }
+
+    public static boolean isApkFileName(String fileName) {
+        return !TextUtils.isEmpty(fileName) && fileName.toLowerCase().endsWith(".apk");
     }
 
     public static String getMimeTypePart(String mime) {

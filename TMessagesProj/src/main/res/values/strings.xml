@@ -10902,6 +10902,15 @@
 
     <string name="GuestBotFor"> for </string>
 
+    <string name="ChannelReactionFilter">Filter by Reaction</string>
+    <string name="ChannelReactionFilterClear">Clear Reaction Filter</string>
+    <string name="ChannelReactionFilterLoadedOnly">Loaded messages with your reaction</string>
+    <string name="ChannelReactionFilterPickerHint">Filters only messages loaded on this device.</string>
+    <string name="LoadAllMessages">Load all messages</string>
+    <string name="LoadAllMessagesProgress">Loaded %1$d messages</string>
+    <string name="LoadAllMessagesDone">Loaded %1$d messages</string>
+    <string name="LoadAllMessagesFailed">Failed to load messages</string>
+
     <string name="WearAuthTitle">Use Telegram with WearOS</string>
     <string name="WearAuthText">Connect your account to WatchOS device\nto use it separately from your watch.</string>
     <string name="WearAuthEmojis">Compare emojis on your watch</string>

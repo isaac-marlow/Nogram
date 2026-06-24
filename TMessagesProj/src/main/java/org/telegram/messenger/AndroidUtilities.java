@@ -4278,7 +4278,10 @@ public class AndroidUtilities {
                     }
                 }
             }
-            if (realMimeType != null && realMimeType.equals("application/vnd.android.package-archive")) {
+            if (FileLoader.isApkMimeType(realMimeType) || FileLoader.isApkFileName(fileName)) {
+                if (!BuildVars.CAN_DOWNLOAD_APP_UPDATE) {
+                    return true;
+                }
                 if (restrict) return true;
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && !ApplicationLoader.applicationContext.getPackageManager().canRequestPackageInstalls()) {
                     AlertsCreator.createApkRestrictedDialog(activity, resourcesProvider).show();

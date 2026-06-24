@@ -64,6 +64,9 @@ public class ApplicationLoaderImpl extends ApplicationLoader {
 
     @Override
     public boolean checkApkInstallPermissions(final Context context) {
+        if (!org.telegram.messenger.BuildVars.CAN_DOWNLOAD_APP_UPDATE) {
+            return false;
+        }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && !ApplicationLoader.applicationContext.getPackageManager().canRequestPackageInstalls()) {
             AlertsCreator.createApkRestrictedDialog(context, null).show();
             return false;
@@ -73,6 +76,9 @@ public class ApplicationLoaderImpl extends ApplicationLoader {
 
     @Override
     public boolean openApkInstall(Activity activity, TLRPC.Document document) {
+        if (!org.telegram.messenger.BuildVars.CAN_DOWNLOAD_APP_UPDATE) {
+            return false;
+        }
         boolean exists = false;
         try {
             String fileName = FileLoader.getAttachFileName(document);
@@ -100,6 +106,9 @@ public class ApplicationLoaderImpl extends ApplicationLoader {
 
     @Override
     public boolean showUpdateAppPopup(Context context, TLRPC.TL_help_appUpdate update, int account) {
+        if (!org.telegram.messenger.BuildVars.CAN_DOWNLOAD_APP_UPDATE) {
+            return false;
+        }
         try {
             (new UpdateAppAlertDialog(context, update, account)).show();
         } catch (Exception e) {
@@ -110,6 +119,9 @@ public class ApplicationLoaderImpl extends ApplicationLoader {
 
     @Override
     public IUpdateLayout takeUpdateLayout(Activity activity, ViewGroup sideMenuContainer) {
+        if (!org.telegram.messenger.BuildVars.CAN_DOWNLOAD_APP_UPDATE) {
+            return null;
+        }
         return new UpdateLayout(activity, sideMenuContainer);
     }
 
