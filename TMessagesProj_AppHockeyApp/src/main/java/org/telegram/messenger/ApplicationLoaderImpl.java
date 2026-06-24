@@ -161,6 +161,9 @@ public class ApplicationLoaderImpl extends ApplicationLoader {
 
     @Override
     public boolean checkApkInstallPermissions(final Context context) {
+        if (!org.telegram.messenger.BuildVars.CAN_DOWNLOAD_APP_UPDATE) {
+            return false;
+        }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && !ApplicationLoader.applicationContext.getPackageManager().canRequestPackageInstalls()) {
             AlertsCreator.createApkRestrictedDialog(context, null).show();
             return false;
@@ -170,6 +173,9 @@ public class ApplicationLoaderImpl extends ApplicationLoader {
 
     @Override
     public boolean openApkInstall(Activity activity, TLRPC.Document document) {
+        if (!org.telegram.messenger.BuildVars.CAN_DOWNLOAD_APP_UPDATE) {
+            return false;
+        }
         boolean exists = false;
         try {
             final String fileName = FileLoader.getAttachFileName(document);
@@ -203,7 +209,7 @@ public class ApplicationLoaderImpl extends ApplicationLoader {
 
     @Override
     public boolean isCustomUpdate() {
-        return !TextUtils.isEmpty(org.telegram.messenger.BuildConfig.BETA_URL);
+        return org.telegram.messenger.BuildVars.CAN_DOWNLOAD_APP_UPDATE && !TextUtils.isEmpty(org.telegram.messenger.BuildConfig.BETA_URL);
     }
 
     @Override
@@ -256,6 +262,9 @@ public class ApplicationLoaderImpl extends ApplicationLoader {
 
     @Override
     public boolean showCustomUpdateAppPopup(Context context, BetaUpdate update, int account) {
+        if (!org.telegram.messenger.BuildVars.CAN_DOWNLOAD_APP_UPDATE) {
+            return false;
+        }
         try {
             (new UpdateAppAlertDialog(context, update, account)).show();
         } catch (Exception e) {
