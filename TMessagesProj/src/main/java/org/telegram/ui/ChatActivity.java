@@ -9882,12 +9882,7 @@ public class ChatActivity extends BaseFragment implements
         translateButton = new TranslateButton(getContext(), this, themeDelegate) {
             @Override
             protected void onButtonClick() {
-                if (getUserConfig().isPremium() || currentChat != null && currentChat.autotranslation) {
-                    getMessagesController().getTranslateController().toggleTranslatingDialog(getDialogId());
-                } else {
-                    MessagesController.getNotificationsSettings(currentAccount).edit().putInt("dialog_show_translate_count" + getDialogId(), 14).commit();
-                    showDialog(new PremiumFeatureBottomSheet(ChatActivity.this, PremiumPreviewFragment.PREMIUM_FEATURE_TRANSLATIONS, false));
-                }
+                getMessagesController().getTranslateController().toggleTranslatingDialog(getDialogId());
                 updateTopPanel(true);
             }
 
@@ -29222,9 +29217,9 @@ public class ChatActivity extends BaseFragment implements
 
         boolean showRestartTopic = !isInPreviewMode() && forumTopic != null && forumTopic.closed && !forumTopic.hidden && ChatObject.canManageTopic(currentAccount, currentChat, forumTopic);
         boolean showTranslate = (
-            getUserConfig().isPremium() || currentChat != null && currentChat.autotranslation ?
-                getMessagesController().getTranslateController().isDialogTranslatable(getDialogId()) && !getMessagesController().getTranslateController().isTranslateDialogHidden(getDialogId()) :
-                !getMessagesController().premiumFeaturesBlocked() && preferences.getInt("dialog_show_translate_count" + did, 5) <= 0
+            getMessagesController().getTranslateController().isFeatureAvailable(getDialogId()) &&
+            getMessagesController().getTranslateController().isDialogTranslatable(getDialogId()) &&
+            !getMessagesController().getTranslateController().isTranslateDialogHidden(getDialogId())
         ) || DEBUG_TOP_PANELS;
         boolean showAddProfilePicture = UserObject.isBot(currentUser) && currentUser.bot_can_edit && currentUser.photo == null;
         boolean showBizBot = currentEncryptedChat == null && getUserConfig().isPremium() && preferences.getLong("dialog_botid" + did, 0) != 0 || DEBUG_TOP_PANELS;
@@ -44383,7 +44378,7 @@ public class ChatActivity extends BaseFragment implements
         options.setOnDismiss(dialog::dismissFast);
 
         final boolean allowCustomTabs = !str.startsWith("video?") && !Browser.isInternalUri(Uri.parse(str), null);
-        final boolean inAppBrowser = getMessagesController().isWebBrowserOpenInApp(str);
+        final boolean inAppBrowser = Browser.ALLOW_IN_APP_BROWSER && getMessagesController().isWebBrowserOpenInApp(str);
         final boolean customTabs = inAppBrowser && allowCustomTabs;
         final boolean isHashtag = str.startsWith("#") || str.startsWith("$");
         final boolean isMail = str.startsWith("mailto:");
@@ -44416,7 +44411,7 @@ public class ChatActivity extends BaseFragment implements
                     });
                 }
             });
-        } else if (!isMail && !isHashtag && !customTabs && allowCustomTabs && !inAppBrowser) {
+        } else if (Browser.ALLOW_IN_APP_BROWSER && !isMail && !isHashtag && !customTabs && allowCustomTabs && !inAppBrowser) {
             options.add(R.drawable.menu_website, getString(R.string.OpenInTelegramBrowser2), () -> {
                 if (MessagesController.getInstance(currentAccount).isWebBrowserExceptionsLimitReached(false)) {
                     Browser.openInTelegramBrowser(getParentActivity(), str, null);

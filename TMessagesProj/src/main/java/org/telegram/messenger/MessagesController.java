@@ -24317,11 +24317,11 @@ public class MessagesController extends BaseController implements NotificationCe
     }
 
     public boolean isWebBrowserInAppEnabled() {
-        return webBrowserSettings != null && !webBrowserSettings.open_external_browser;
+        return Browser.ALLOW_IN_APP_BROWSER && webBrowserSettings != null && !webBrowserSettings.open_external_browser;
     }
 
     public boolean isWebBrowserOpenInApp(String url) {
-        return webBrowserSettings != null && url != null && !isWebBrowserOpenInExternal(webBrowserSettings, url);
+        return Browser.ALLOW_IN_APP_BROWSER && webBrowserSettings != null && url != null && !isWebBrowserOpenInExternal(webBrowserSettings, url);
     }
 
 

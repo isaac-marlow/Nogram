@@ -224,6 +224,10 @@ public class SharedConfig {
     @PasscodeType
     public static int passcodeType;
     public static String passcodeHash = "";
+    public static String archivePasscodeHash = "";
+    public static byte[] archivePasscodeSalt = new byte[0];
+    @PasscodeType
+    public static int archivePasscodeType;
     public static long passcodeRetryInMs;
     public static long lastUptimeMillis;
     public static int badPasscodeTries;
@@ -435,6 +439,9 @@ public class SharedConfig {
                 editor.putBoolean("saveIncomingPhotos", saveIncomingPhotos);
                 editor.putString("passcodeHash1", passcodeHash);
                 editor.putString("passcodeSalt", passcodeSalt.length > 0 ? Base64.encodeToString(passcodeSalt, Base64.DEFAULT) : "");
+                editor.putString("archivePasscodeHash", archivePasscodeHash);
+                editor.putString("archivePasscodeSalt", archivePasscodeSalt.length > 0 ? Base64.encodeToString(archivePasscodeSalt, Base64.DEFAULT) : "");
+                editor.putInt("archivePasscodeType", archivePasscodeType);
                 editor.putBoolean("appLocked", appLocked);
                 editor.putInt("passcodeType", passcodeType);
                 editor.putLong("passcodeRetryInMs", passcodeRetryInMs);
@@ -513,6 +520,18 @@ public class SharedConfig {
             SharedPreferences preferences = ApplicationLoader.applicationContext.getSharedPreferences("userconfing", Context.MODE_PRIVATE);
             saveIncomingPhotos = preferences.getBoolean("saveIncomingPhotos", false);
             passcodeHash = preferences.getString("passcodeHash1", "");
+            archivePasscodeHash = preferences.getString("archivePasscodeHash", "");
+            archivePasscodeType = preferences.getInt("archivePasscodeType", PASSCODE_TYPE_PIN);
+            String archivePasscodeSaltString = preferences.getString("archivePasscodeSalt", "");
+            if (!TextUtils.isEmpty(archivePasscodeSaltString)) {
+                try {
+                    archivePasscodeSalt = Base64.decode(archivePasscodeSaltString, Base64.DEFAULT);
+                } catch (Exception e) {
+                    archivePasscodeHash = "";
+                    archivePasscodeSalt = new byte[0];
+                    FileLog.e(e);
+                }
+            }
             appLocked = preferences.getBoolean("appLocked", false);
             passcodeType = preferences.getInt("passcodeType", 0);
             passcodeRetryInMs = preferences.getLong("passcodeRetryInMs", 0);
@@ -862,6 +881,50 @@ public class SharedConfig {
         return false;
     }
 
+    public static boolean hasArchivePasscode() {
+        return !TextUtils.isEmpty(archivePasscodeHash) && archivePasscodeSalt.length > 0;
+    }
+
+    public static void setArchivePasscode(String passcode, @PasscodeType int type) {
+        try {
+            archivePasscodeSalt = new byte[16];
+            Utilities.random.nextBytes(archivePasscodeSalt);
+            archivePasscodeHash = hashArchivePasscode(passcode);
+            archivePasscodeType = type;
+            saveConfig();
+        } catch (Exception e) {
+            FileLog.e(e);
+        }
+    }
+
+    public static boolean checkArchivePasscode(String passcode) {
+        if (!hasArchivePasscode()) {
+            return false;
+        }
+        try {
+            return archivePasscodeHash.equals(hashArchivePasscode(passcode));
+        } catch (Exception e) {
+            FileLog.e(e);
+            return false;
+        }
+    }
+
+    public static void clearArchivePasscode() {
+        archivePasscodeHash = "";
+        archivePasscodeSalt = new byte[0];
+        archivePasscodeType = PASSCODE_TYPE_PIN;
+        saveConfig();
+    }
+
+    private static String hashArchivePasscode(String passcode) throws Exception {
+        byte[] passcodeBytes = passcode.getBytes("UTF-8");
+        byte[] bytes = new byte[32 + passcodeBytes.length];
+        System.arraycopy(archivePasscodeSalt, 0, bytes, 0, 16);
+        System.arraycopy(passcodeBytes, 0, bytes, 16, passcodeBytes.length);
+        System.arraycopy(archivePasscodeSalt, 0, bytes, passcodeBytes.length + 16, 16);
+        return Utilities.bytesToHex(Utilities.computeSHA256(bytes, 0, bytes.length));
+    }
+
     public static void clearConfig() {
         saveIncomingPhotos = false;
         appLocked = false;
@@ -871,6 +934,9 @@ public class SharedConfig {
         badPasscodeTries = 0;
         passcodeHash = "";
         passcodeSalt = new byte[0];
+        archivePasscodeHash = "";
+        archivePasscodeSalt = new byte[0];
+        archivePasscodeType = PASSCODE_TYPE_PIN;
         autoLockIn = 60 * 60;
         lastPauseTime = 0;
         useFingerprintLock = true;

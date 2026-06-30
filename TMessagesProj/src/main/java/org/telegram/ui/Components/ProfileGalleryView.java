@@ -142,6 +142,11 @@ public class ProfileGalleryView extends CircularViewPager implements Notificatio
     int prevPage;
 
     private ProfileGalleryBlurView blurView;
+    private boolean allowProfilePhotoScrolling = true;
+
+    public void setAllowProfilePhotoScrolling(boolean allowProfilePhotoScrolling) {
+        this.allowProfilePhotoScrolling = allowProfilePhotoScrolling;
+    }
 
     public ProfileGalleryView(Context context, ActionBar parentActionBar, RecyclerListView parentListView, Callback callback) {
         super(context);
@@ -452,6 +457,9 @@ public class ProfileGalleryView extends CircularViewPager implements Notificatio
     public boolean onTouchEvent(MotionEvent ev) {
         if (adapter == null) {
             return false;
+        }
+        if (!allowProfilePhotoScrolling) {
+            return parentListView.onTouchEvent(ev);
         }
         if (parentListView.getScrollState() != RecyclerView.SCROLL_STATE_IDLE && !isScrollingListView && isSwipingViewPager) {
             isSwipingViewPager = false;
@@ -889,6 +897,9 @@ public class ProfileGalleryView extends CircularViewPager implements Notificatio
 
     @Override
     public boolean onInterceptTouchEvent(MotionEvent e) {
+        if (!allowProfilePhotoScrolling) {
+            return false;
+        }
         if (parentListView.getScrollState() != RecyclerView.SCROLL_STATE_IDLE) {
             return false;
         }

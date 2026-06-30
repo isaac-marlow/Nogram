@@ -8,4 +8,8 @@
     <color name="widget_divider">#000000</color>
     <color name="widget_action_text">#75ADE5</color>
     <color name="widget_edit_text">#8D949B</color>
+    <color name="channel_feed_widget_item">#FF25282C</color>
+    <color name="channel_feed_widget_accent">#75ADE5</color>
+    <color name="channel_feed_widget_link">#1F75ADE5</color>
+    <color name="channel_feed_widget_link_pressed">#3D75ADE5</color>
 </resources>

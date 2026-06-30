@@ -261,6 +261,8 @@
     <string name="ArchiveSearchFilter">Archive</string>
     <string name="Unarchive">Unarchive</string>
     <string name="ArchivedChats">Archived Chats</string>
+    <string name="ArchivePasscode">Lock Archived Chats</string>
+    <string name="ArchivePasscodeInfo">Use a separate PIN or password when opening Archived Chats</string>
     <string name="DeleteChatUser">Delete Chat</string>
     <string name="HiddenName">Deleted Account</string>
     <string name="SelectChat">Select Chat</string>
@@ -1494,6 +1496,8 @@
     <string name="DeleteForUser">Delete for %1$s</string>
     <string name="DeleteForAll">Delete for all members</string>
     <string name="TextCopied">Text copied to clipboard</string>
+    <string name="ChatId">Chat ID</string>
+    <string name="ChatIdCopied">Chat ID copied</string>
     <string name="ExactTextCopied">"%s" copied to clipboard</string>
     <string name="CodeCopied">Code copied to clipboard</string>
     <string name="HoldToAudioOnly">Hold to record audio.</string>
@@ -10915,4 +10919,30 @@
     <string name="WearAuthText">Connect your account to WatchOS device\nto use it separately from your watch.</string>
     <string name="WearAuthEmojis">Compare emojis on your watch</string>
     <string name="WearAuthEmojisLogIn">Log In</string>
+
+    <string name="FloatingChannelButton">Floating Shortcut Button</string>
+    <string name="ShowChannelsInDialogs">Show channels in chat list</string>
+    <string name="ShowBotsInDialogs">Show bots in chat list</string>
+    <string name="FloatingChannelButtonLink">Button Link</string>
+    <string name="FloatingChannelButtonLinks">Important Links</string>
+    <string name="FloatingChannelButtonLinkHint">https://t.me/channel</string>
+    <string name="FloatingChannelButtonLinkNumber">Link, user, or chat ID %1$d</string>
+    <string name="FloatingChannelButtonSettingsInfo">Manage up to five chat IDs, chats, channels, or web links opened from the floating button.</string>
+    <string name="FloatingChannelButtonScreenInfo">Add up to five links, Telegram user IDs, or chat IDs. When several destinations are saved, the floating button expands to show each chat or user with its avatar when available.</string>
+    <string name="FloatingChannelButtonInfo">Enter an HTTP, HTTPS, or Telegram link, or paste a numeric Telegram user or chat ID. Negative chat IDs and Bot API IDs beginning with -100 are supported. Leave unused fields blank.</string>
+    <string name="FloatingChannelButtonInvalidLink">Enter a valid link, user ID, or chat ID</string>
+    <string name="FloatingChannelButtonSaved">Floating shortcut settings saved</string>
+    <string name="FloatingShortcutSystemOverlay">Show over other apps</string>
+    <string name="ChannelFeedWidgetName">Channel Feed</string>
+    <string name="ChannelFeedWidgetDescription">Read messages and open links from the channel saved for the floating button.</string>
+    <string name="ChannelFeedWidgetConfigure">Set and verify a channel in Settings, then add this widget again.</string>
+    <string name="ChannelFeedWidgetJoinFirst">Open and join this private channel before using it in the widget.</string>
+    <string name="ChannelFeedWidgetNotChannel">This link does not point to a broadcast channel.</string>
+    <string name="ChannelFeedWidgetResolveFailed">The channel could not be verified. Check the link and your connection.</string>
+    <string name="ChannelFeedWidgetLoadFailed">Couldn\'t refresh. Showing the last available messages.</string>
+    <string name="ChannelFeedWidgetOlder">Older ›</string>
+    <string name="ChannelFeedWidgetNewer">‹ Newer</string>
+    <string name="ChannelFeedWidgetPage">Page %1$d</string>
+    <string name="ChannelFeedWidgetPreviewMessage">Channel posts appear here with text, captions, images, and safe link buttons.</string>
+    <string name="ChannelFeedWidgetPaginationPreview">‹ Newer        Older ›</string>
 </resources>

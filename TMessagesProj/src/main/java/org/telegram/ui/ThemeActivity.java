@@ -128,6 +128,8 @@ public class ThemeActivity extends BaseFragment implements NotificationCenter.No
     public final static int THEME_TYPE_NIGHT = 1;
     public final static int THEME_TYPE_OTHER = 2;
     public final static int THEME_TYPE_THEMES_BROWSER = 3;
+    public static final String PREF_SHOW_CHANNEL_DIALOGS = "show_channel_dialogs";
+    public static final String PREF_SHOW_BOT_DIALOGS = "show_bot_dialogs";
 
     private ListAdapter listAdapter;
     private RecyclerListView listView;
@@ -167,6 +169,9 @@ public class ThemeActivity extends BaseFragment implements NotificationCenter.No
     private int searchEngineRow;
     private int bluetoothScoRow;
     private int enableAnimationsRow;
+    private int showChannelDialogsRow;
+    private int showBotDialogsRow;
+    private int archivePasscodeRow;
     private int settings2Row;
     @Keep
     private int changeUserColor;
@@ -596,6 +601,9 @@ public class ThemeActivity extends BaseFragment implements NotificationCenter.No
         distanceRow = -1;
         searchEngineRow = -1;
         bluetoothScoRow = -1;
+        showChannelDialogsRow = -1;
+        showBotDialogsRow = -1;
+        archivePasscodeRow = -1;
         settings2Row = -1;
 
         swipeGestureHeaderRow = -1;
@@ -668,20 +676,11 @@ public class ThemeActivity extends BaseFragment implements NotificationCenter.No
             bubbleRadiusRow = rowCount++;
             bubbleRadiusInfoRow = rowCount++;
 
-            chatListHeaderRow = rowCount++;
-            chatListRow = rowCount++;
-            chatListInfoRow = rowCount++;
-
-            appIconHeaderRow = rowCount++;
-            appIconSelectorRow = rowCount++;
-            appIconShadowRow = rowCount++;
-
             swipeGestureHeaderRow = rowCount++;
             swipeGestureRow = rowCount++;
             swipeGestureInfoRow = rowCount++;
 
             nightThemeRow = rowCount++;
-            browserRow = rowCount++;
             stickersRow = rowCount++;
             stickersSectionRow = rowCount++;
 
@@ -697,6 +696,9 @@ public class ThemeActivity extends BaseFragment implements NotificationCenter.No
             mediaSoundSectionRow = rowCount++;
 
             otherHeaderRow = rowCount++;
+            showChannelDialogsRow = rowCount++;
+            showBotDialogsRow = rowCount++;
+            archivePasscodeRow = rowCount++;
             directShareRow = rowCount++;
             TL_account.contentSettings contentSettings = getMessagesController().getContentSettings();
             if (contentSettings != null && contentSettings.sensitive_can_change) {
@@ -1160,6 +1162,18 @@ public class ThemeActivity extends BaseFragment implements NotificationCenter.No
                 if (view instanceof TextCheckCell) {
                     ((TextCheckCell) view).setChecked(SharedConfig.pauseMusicOnMedia);
                 }
+            } else if (position == archivePasscodeRow) {
+                if (SharedConfig.hasArchivePasscode()) {
+                    presentFragment(new PasscodeActivity(PasscodeActivity.TYPE_ENTER_ARCHIVE_CODE).setOnArchivePasscodeAccepted(() -> {
+                        SharedConfig.clearArchivePasscode();
+                        if (listAdapter != null) {
+                            listAdapter.notifyItemChanged(archivePasscodeRow);
+                        }
+                    }));
+                } else {
+                    presentFragment(new ActionIntroActivity(ActionIntroActivity.ACTION_TYPE_SET_PASSCODE)
+                            .setArchivePasscodeSetup());
+                }
             } else if (position == distanceRow) {
                 if (getParentActivity() == null) {
                     return;
@@ -1314,6 +1328,14 @@ public class ThemeActivity extends BaseFragment implements NotificationCenter.No
                 SharedConfig.toggleDirectShare();
                 if (view instanceof TextCheckCell) {
                     ((TextCheckCell) view).setChecked(SharedConfig.directShare);
+                }
+            } else if (position == showChannelDialogsRow || position == showBotDialogsRow) {
+                String key = position == showChannelDialogsRow ? PREF_SHOW_CHANNEL_DIALOGS : PREF_SHOW_BOT_DIALOGS;
+                SharedPreferences preferences = getMessagesController().getMainSettings();
+                boolean show = !preferences.getBoolean(key, true);
+                preferences.edit().putBoolean(key, show).apply();
+                if (view instanceof TextCheckCell) {
+                    ((TextCheckCell) view).setChecked(show);
                 }
             } else if (position == sensitiveContentRow) {
                 if (!getMessagesController().showSensitiveContent()) {
@@ -2614,6 +2636,13 @@ public class ThemeActivity extends BaseFragment implements NotificationCenter.No
                         textCheckCell.setTextAndCheck(getString(R.string.PauseMusicOnMedia), SharedConfig.pauseMusicOnMedia, true);
                     } else if (position == directShareRow) {
                         textCheckCell.setTextAndValueAndCheck(getString("DirectShare", R.string.DirectShare), getString("DirectShareInfo", R.string.DirectShareInfo), SharedConfig.directShare, false, true);
+                    } else if (position == showChannelDialogsRow) {
+                        textCheckCell.setTextAndCheck(getString(R.string.ShowChannelsInDialogs), getMessagesController().getMainSettings().getBoolean(PREF_SHOW_CHANNEL_DIALOGS, true), true);
+                    } else if (position == showBotDialogsRow) {
+                        textCheckCell.setTextAndCheck(getString(R.string.ShowBotsInDialogs), getMessagesController().getMainSettings().getBoolean(PREF_SHOW_BOT_DIALOGS, true), true);
+                    } else if (position == archivePasscodeRow) {
+                        textCheckCell.setTextAndValueAndCheck(getString(R.string.ArchivePasscode),
+                                getString(R.string.ArchivePasscodeInfo), SharedConfig.hasArchivePasscode(), true, true);
                     } else if (position == sensitiveContentRow) {
                         textCheckCell.setTextAndValueAndCheck(getString(R.string.ShowSensitiveContent), getString(R.string.ShowSensitiveContentInfo), getMessagesController().showSensitiveContent(), true, true);
                     } else if (position == chatBlurRow) {
@@ -2751,7 +2780,9 @@ public class ThemeActivity extends BaseFragment implements NotificationCenter.No
                 return TYPE_BRIGHTNESS;
             } else if (position == scheduleLocationRow || position == sendByEnterRow ||
                     position == raiseToSpeakRow || position == raiseToListenRow || position == pauseOnRecordRow ||
-                    position == directShareRow || position == chatBlurRow || position == pauseOnMediaRow || position == nextMediaTapRow || position == sensitiveContentRow) {
+                    position == directShareRow || position == showChannelDialogsRow || position == showBotDialogsRow ||
+                    position == archivePasscodeRow ||
+                    position == chatBlurRow || position == pauseOnMediaRow || position == nextMediaTapRow || position == sensitiveContentRow) {
                 return TYPE_TEXT_CHECK;
             } else if (position == textSizeRow) {
                 return TYPE_TEXT_SIZE;

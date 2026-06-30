@@ -61,6 +61,8 @@ import java.util.regex.Pattern;
 
 public class Browser {
 
+    public static final boolean ALLOW_IN_APP_BROWSER = false;
+
     private static WeakReference<CustomTabsSession> customTabsCurrentSession;
     private static CustomTabsSession customTabsSession;
     private static CustomTabsClient customTabsClient;
@@ -376,7 +378,7 @@ public class Browser {
                     .appendQueryParameter("autologin_token", autologin_token)
                     .build();
             }
-            if (allowCustom && !(uri != null && MessagesController.getInstance(currentAccount).isWebBrowserOpenInApp(uri.toString()) || isInstantViewOpen()) && MessagesController.getInstance(currentAccount).isWebBrowserUseCustomTabs() && !internalUri && !scheme.equals("tel") && !isTonsite(uri.toString())) {
+            if (ALLOW_IN_APP_BROWSER && allowCustom && !(uri != null && MessagesController.getInstance(currentAccount).isWebBrowserOpenInApp(uri.toString()) || isInstantViewOpen()) && MessagesController.getInstance(currentAccount).isWebBrowserUseCustomTabs() && !internalUri && !scheme.equals("tel") && !isTonsite(uri.toString())) {
                 if (forceBrowser[0] || !openInExternalApp(context, uri.toString(), false) || !hasAppToOpen(context, uri.toString())) {
                     if (MessagesController.getInstance(currentAccount).authDomains.contains(host)) {
                         Intent intent = new Intent(Intent.ACTION_VIEW, uri);
@@ -410,7 +412,7 @@ public class Browser {
         try {
 
 
-            final boolean inappBrowser = (
+            final boolean inappBrowser = ALLOW_IN_APP_BROWSER && (
                 allowInAppBrowser && BubbleActivity.instance == null &&
                 (uri != null && MessagesController.getInstance(currentAccount).isWebBrowserOpenInApp(uri.toString()) || isInstantViewOpen()) &&
                 TextUtils.isEmpty(browserPackage) &&
@@ -484,6 +486,9 @@ public class Browser {
     }
 
     public static boolean openInTelegramBrowser(Context context, String url, Browser.Progress progress) {
+        if (!ALLOW_IN_APP_BROWSER) {
+            return openInExternalBrowser(context, url, false);
+        }
         if (LaunchActivity.instance != null) {
             BottomSheetTabs tabs = LaunchActivity.instance.getBottomSheetTabs();
             if (tabs != null && tabs.tryReopenTab(url) != null) {

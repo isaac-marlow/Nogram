@@ -92,13 +92,17 @@ import java.util.concurrent.atomic.AtomicBoolean;
 public class PasscodeActivity extends BaseFragment implements NotificationCenter.NotificationCenterDelegate {
     public final static int TYPE_MANAGE_CODE_SETTINGS = 0,
             TYPE_SETUP_CODE = 1,
-            TYPE_ENTER_CODE_TO_MANAGE_SETTINGS = 2;
+            TYPE_ENTER_CODE_TO_MANAGE_SETTINGS = 2,
+            TYPE_SETUP_ARCHIVE_CODE = 3,
+            TYPE_ENTER_ARCHIVE_CODE = 4;
 
     @Retention(RetentionPolicy.SOURCE)
     @IntDef({
             TYPE_MANAGE_CODE_SETTINGS,
             TYPE_SETUP_CODE,
-            TYPE_ENTER_CODE_TO_MANAGE_SETTINGS
+            TYPE_ENTER_CODE_TO_MANAGE_SETTINGS,
+            TYPE_SETUP_ARCHIVE_CODE,
+            TYPE_ENTER_ARCHIVE_CODE
     })
     public @interface PasscodeActivityType {}
 
@@ -369,7 +373,9 @@ public class PasscodeActivity extends BaseFragment implements NotificationCenter
                 break;
             }
             case TYPE_SETUP_CODE:
-            case TYPE_ENTER_CODE_TO_MANAGE_SETTINGS: {
+            case TYPE_ENTER_CODE_TO_MANAGE_SETTINGS:
+            case TYPE_SETUP_ARCHIVE_CODE:
+            case TYPE_ENTER_ARCHIVE_CODE: {
                 if (actionBar != null) {
                     actionBar.setBackgroundColor(Theme.getColor(Theme.key_windowBackgroundWhite));
 
@@ -380,7 +386,7 @@ public class PasscodeActivity extends BaseFragment implements NotificationCenter
                     ActionBarMenu menu = actionBar.createMenu();
 
                     ActionBarMenuSubItem switchItem;
-                    if (type == TYPE_SETUP_CODE) {
+                    if (isSetupType()) {
                         otherItem = menu.addItem(0, R.drawable.ic_ab_other);
                         switchItem = otherItem.addSubItem(ID_SWITCH_TYPE, R.drawable.msg_permissions, LocaleController.getString(R.string.PasscodeSwitchToPassword));
                     } else switchItem = null;
@@ -429,8 +435,8 @@ public class PasscodeActivity extends BaseFragment implements NotificationCenter
                 titleTextView = new TextView(context);
                 titleTextView.setTextColor(Theme.getColor(Theme.key_windowBackgroundWhiteBlackText));
                 titleTextView.setTypeface(AndroidUtilities.bold());
-                if (type == TYPE_SETUP_CODE) {
-                    if (!SharedConfig.passcodeHash.isEmpty()) {
+                if (isSetupType()) {
+                    if (isArchiveType() ? SharedConfig.hasArchivePasscode() : !SharedConfig.passcodeHash.isEmpty()) {
                         titleTextView.setText(LocaleController.getString(R.string.EnterNewPasscode));
                     } else {
                         titleTextView.setText(LocaleController.getString(R.string.CreatePasscode));
@@ -487,7 +493,7 @@ public class PasscodeActivity extends BaseFragment implements NotificationCenter
                 passwordEditText.setLines(1);
                 passwordEditText.setGravity(LocaleController.isRTL ? Gravity.RIGHT : Gravity.LEFT);
                 passwordEditText.setSingleLine(true);
-                if (type == TYPE_SETUP_CODE) {
+                if (isSetupType()) {
                     passcodeSetStep = 0;
                     passwordEditText.setImeOptions(EditorInfo.IME_ACTION_NEXT);
                 } else {
@@ -514,7 +520,7 @@ public class PasscodeActivity extends BaseFragment implements NotificationCenter
                 passwordButton.setImageResource(R.drawable.msg_message);
                 passwordButton.setColorFilter(Theme.getColor(Theme.key_windowBackgroundWhiteHintText));
                 passwordButton.setBackground(Theme.createSelectorDrawable(getThemedColor(Theme.key_listSelector), 1));
-                AndroidUtilities.updateViewVisibilityAnimated(passwordButton, type == TYPE_SETUP_CODE && passcodeSetStep == 0, 0.1f, false);
+                AndroidUtilities.updateViewVisibilityAnimated(passwordButton, isSetupType() && passcodeSetStep == 0, 0.1f, false);
 
                 AtomicBoolean isPasswordShown = new AtomicBoolean(false);
                 passwordEditText.addTextChangedListener(new TextWatcher() {
@@ -526,7 +532,7 @@ public class PasscodeActivity extends BaseFragment implements NotificationCenter
 
                     @Override
                     public void afterTextChanged(Editable s) {
-                        if (type == TYPE_SETUP_CODE && passcodeSetStep == 0) {
+                        if (isSetupType() && passcodeSetStep == 0) {
                             if (TextUtils.isEmpty(s) && passwordButton.getVisibility() != View.GONE) {
                                 if (isPasswordShown.get()) {
                                     passwordButton.callOnClick();
@@ -635,7 +641,7 @@ public class PasscodeActivity extends BaseFragment implements NotificationCenter
 
                 innerLinearLayout.addView(codeContainer, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT, Gravity.CENTER_HORIZONTAL, 0, 32, 0, 72));
 
-                if (type == TYPE_SETUP_CODE) {
+                if (isSetupType()) {
                     frameLayout.setTag(Theme.key_windowBackgroundWhite);
                 }
 
@@ -643,13 +649,13 @@ public class PasscodeActivity extends BaseFragment implements NotificationCenter
                 VerticalPositionAutoAnimator.attach(floatingButton);
                 frameLayout.addView(floatingButton, FragmentFloatingButton.createDefaultLayoutParamsBig());
                 floatingButton.setOnClickListener(view -> {
-                    if (type == TYPE_SETUP_CODE) {
+                    if (isSetupType()) {
                         if (passcodeSetStep == 0) {
                             processNext();
                         } else {
                             processDone();
                         }
-                    } else if (type == TYPE_ENTER_CODE_TO_MANAGE_SETTINGS) {
+                    } else if (isEnterType()) {
                         processDone();
                     }
                 });
@@ -830,6 +836,11 @@ public class PasscodeActivity extends BaseFragment implements NotificationCenter
     public void onTransitionAnimationEnd(boolean isOpen, boolean backward) {
         if (isOpen && type != TYPE_MANAGE_CODE_SETTINGS) {
             showKeyboard();
+        } else if (!isOpen && backward && runArchiveCallbackAfterClose) {
+            runArchiveCallbackAfterClose = false;
+            if (archivePasscodeAccepted != null) {
+                AndroidUtilities.runOnUIThread(archivePasscodeAccepted);
+            }
         }
     }
 
@@ -847,14 +858,14 @@ public class PasscodeActivity extends BaseFragment implements NotificationCenter
 
     private void updateFields() {
         String text;
-        if (type == TYPE_ENTER_CODE_TO_MANAGE_SETTINGS) {
+        if (isEnterType()) {
             text = LocaleController.getString(R.string.EnterYourPasscodeInfo);
         } else if (passcodeSetStep == 0) {
             text = LocaleController.getString(currentPasswordType == SharedConfig.PASSCODE_TYPE_PIN ? R.string.CreatePasscodeInfoPIN : R.string.CreatePasscodeInfoPassword);
         } else text = descriptionTextSwitcher.getCurrentView().getText().toString();
 
         boolean animate = !(descriptionTextSwitcher.getCurrentView().getText().equals(text) || TextUtils.isEmpty(descriptionTextSwitcher.getCurrentView().getText()));
-        if (type == TYPE_ENTER_CODE_TO_MANAGE_SETTINGS) {
+        if (isEnterType()) {
             descriptionTextSwitcher.setText(LocaleController.getString(R.string.EnterYourPasscodeInfo), animate);
         } else if (passcodeSetStep == 0) {
             descriptionTextSwitcher.setText(LocaleController.getString(currentPasswordType == SharedConfig.PASSCODE_TYPE_PIN ? R.string.CreatePasscodeInfoPIN : R.string.CreatePasscodeInfoPassword), animate);
@@ -909,13 +920,27 @@ public class PasscodeActivity extends BaseFragment implements NotificationCenter
     }
 
     private boolean isPinCode() {
-        return type == TYPE_SETUP_CODE && currentPasswordType == SharedConfig.PASSCODE_TYPE_PIN ||
-                type == TYPE_ENTER_CODE_TO_MANAGE_SETTINGS && SharedConfig.passcodeType == SharedConfig.PASSCODE_TYPE_PIN;
+        return isSetupType() && currentPasswordType == SharedConfig.PASSCODE_TYPE_PIN ||
+                type == TYPE_ENTER_CODE_TO_MANAGE_SETTINGS && SharedConfig.passcodeType == SharedConfig.PASSCODE_TYPE_PIN ||
+                type == TYPE_ENTER_ARCHIVE_CODE && SharedConfig.archivePasscodeType == SharedConfig.PASSCODE_TYPE_PIN;
     }
 
     private boolean isPassword() {
-        return type == TYPE_SETUP_CODE && currentPasswordType == SharedConfig.PASSCODE_TYPE_PASSWORD ||
-                type == TYPE_ENTER_CODE_TO_MANAGE_SETTINGS && SharedConfig.passcodeType == SharedConfig.PASSCODE_TYPE_PASSWORD;
+        return isSetupType() && currentPasswordType == SharedConfig.PASSCODE_TYPE_PASSWORD ||
+                type == TYPE_ENTER_CODE_TO_MANAGE_SETTINGS && SharedConfig.passcodeType == SharedConfig.PASSCODE_TYPE_PASSWORD ||
+                type == TYPE_ENTER_ARCHIVE_CODE && SharedConfig.archivePasscodeType == SharedConfig.PASSCODE_TYPE_PASSWORD;
+    }
+
+    private boolean isSetupType() {
+        return type == TYPE_SETUP_CODE || type == TYPE_SETUP_ARCHIVE_CODE;
+    }
+
+    private boolean isEnterType() {
+        return type == TYPE_ENTER_CODE_TO_MANAGE_SETTINGS || type == TYPE_ENTER_ARCHIVE_CODE;
+    }
+
+    private boolean isArchiveType() {
+        return type == TYPE_SETUP_ARCHIVE_CODE || type == TYPE_ENTER_ARCHIVE_CODE;
     }
 
     private void processDone() {
@@ -924,7 +949,7 @@ public class PasscodeActivity extends BaseFragment implements NotificationCenter
             return;
         }
         String password = isPinCode() ? codeFieldContainer.getCode() : passwordEditText.getText().toString();
-        if (type == TYPE_SETUP_CODE) {
+        if (isSetupType()) {
             if (!firstPassword.equals(password)) {
                 AndroidUtilities.updateViewVisibilityAnimated(passcodesDoNotMatchTextView, true);
                 for (CodeNumberField f : codeFieldContainer.codeField) {
@@ -944,22 +969,26 @@ public class PasscodeActivity extends BaseFragment implements NotificationCenter
                 return;
             }
 
-            boolean isFirst = SharedConfig.passcodeHash.isEmpty();
-            try {
-                SharedConfig.passcodeSalt = new byte[16];
-                Utilities.random.nextBytes(SharedConfig.passcodeSalt);
-                byte[] passcodeBytes = firstPassword.getBytes(StandardCharsets.UTF_8);
-                byte[] bytes = new byte[32 + passcodeBytes.length];
-                System.arraycopy(SharedConfig.passcodeSalt, 0, bytes, 0, 16);
-                System.arraycopy(passcodeBytes, 0, bytes, 16, passcodeBytes.length);
-                System.arraycopy(SharedConfig.passcodeSalt, 0, bytes, passcodeBytes.length + 16, 16);
-                SharedConfig.passcodeHash = Utilities.bytesToHex(Utilities.computeSHA256(bytes, 0, bytes.length));
-            } catch (Exception e) {
-                FileLog.e(e);
+            boolean isFirst = isArchiveType() ? !SharedConfig.hasArchivePasscode() : SharedConfig.passcodeHash.isEmpty();
+            if (isArchiveType()) {
+                SharedConfig.setArchivePasscode(firstPassword, currentPasswordType);
+            } else {
+                try {
+                    SharedConfig.passcodeSalt = new byte[16];
+                    Utilities.random.nextBytes(SharedConfig.passcodeSalt);
+                    byte[] passcodeBytes = firstPassword.getBytes(StandardCharsets.UTF_8);
+                    byte[] bytes = new byte[32 + passcodeBytes.length];
+                    System.arraycopy(SharedConfig.passcodeSalt, 0, bytes, 0, 16);
+                    System.arraycopy(passcodeBytes, 0, bytes, 16, passcodeBytes.length);
+                    System.arraycopy(SharedConfig.passcodeSalt, 0, bytes, passcodeBytes.length + 16, 16);
+                    SharedConfig.passcodeHash = Utilities.bytesToHex(Utilities.computeSHA256(bytes, 0, bytes.length));
+                } catch (Exception e) {
+                    FileLog.e(e);
+                }
+                SharedConfig.allowScreenCapture = true;
+                SharedConfig.passcodeType = currentPasswordType;
+                SharedConfig.saveConfig();
             }
-            SharedConfig.allowScreenCapture = true;
-            SharedConfig.passcodeType = currentPasswordType;
-            SharedConfig.saveConfig();
 
             passwordEditText.clearFocus();
             AndroidUtilities.hideKeyboard(passwordEditText);
@@ -970,6 +999,11 @@ public class PasscodeActivity extends BaseFragment implements NotificationCenter
             keyboardView.setEditText(null);
 
             animateSuccessAnimation(() -> {
+                if (isArchiveType()) {
+                    runArchiveCallbackAfterClose = archivePasscodeAccepted != null;
+                    finishFragment();
+                    return;
+                }
                 getMediaDataController().buildShortcuts();
                 if (isFirst) {
                     presentFragment(new PasscodeActivity(TYPE_MANAGE_CODE_SETTINGS), true);
@@ -982,8 +1016,8 @@ public class PasscodeActivity extends BaseFragment implements NotificationCenter
                 }
                 NotificationCenter.getGlobalInstance().postNotificationName(NotificationCenter.didSetPasscode);
             });
-        } else if (type == TYPE_ENTER_CODE_TO_MANAGE_SETTINGS) {
-            if (SharedConfig.passcodeRetryInMs > 0) {
+        } else if (isEnterType()) {
+            if (!isArchiveType() && SharedConfig.passcodeRetryInMs > 0) {
                 int value = Math.max(1, (int) Math.ceil(SharedConfig.passcodeRetryInMs / 1000.0));
                 Toast.makeText(getParentActivity(), LocaleController.formatString("TooManyTries", R.string.TooManyTries, LocaleController.formatPluralString("Seconds", value)), Toast.LENGTH_SHORT).show();
 
@@ -997,8 +1031,10 @@ public class PasscodeActivity extends BaseFragment implements NotificationCenter
                 onPasscodeError();
                 return;
             }
-            if (!SharedConfig.checkPasscode(password)) {
-                SharedConfig.increaseBadPasscodeTries();
+            if (isArchiveType() ? !SharedConfig.checkArchivePasscode(password) : !SharedConfig.checkPasscode(password)) {
+                if (!isArchiveType()) {
+                    SharedConfig.increaseBadPasscodeTries();
+                }
                 passwordEditText.setText("");
                 for (CodeNumberField f : codeFieldContainer.codeField) {
                     f.setText("");
@@ -1009,8 +1045,10 @@ public class PasscodeActivity extends BaseFragment implements NotificationCenter
                 onPasscodeError();
                 return;
             }
-            SharedConfig.badPasscodeTries = 0;
-            SharedConfig.saveConfig();
+            if (!isArchiveType()) {
+                SharedConfig.badPasscodeTries = 0;
+                SharedConfig.saveConfig();
+            }
 
             passwordEditText.clearFocus();
             AndroidUtilities.hideKeyboard(passwordEditText);
@@ -1021,6 +1059,11 @@ public class PasscodeActivity extends BaseFragment implements NotificationCenter
             keyboardView.setEditText(null);
 
             animateSuccessAnimation(() -> {
+                if (isArchiveType()) {
+                    runArchiveCallbackAfterClose = archivePasscodeAccepted != null;
+                    finishFragment();
+                    return;
+                }
                 presentFragment(new PasscodeActivity(TYPE_MANAGE_CODE_SETTINGS), true);
                 if (openedSettings != null) {
                     AndroidUtilities.runOnUIThread(openedSettings);
@@ -1031,6 +1074,13 @@ public class PasscodeActivity extends BaseFragment implements NotificationCenter
     }
 
     private Runnable openedSettings;
+    private Runnable archivePasscodeAccepted;
+    private boolean runArchiveCallbackAfterClose;
+
+    public PasscodeActivity setOnArchivePasscodeAccepted(Runnable callback) {
+        archivePasscodeAccepted = callback;
+        return this;
+    }
     public void setOnOpenedSettings(Runnable openedSettings) {
         this.openedSettings = openedSettings;
     }

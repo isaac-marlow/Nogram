@@ -103,6 +103,13 @@ public class ActionIntroActivity extends BaseFragment implements LocationControl
     public static final int CAMERA_PERMISSION_REQUEST_CODE = 34;
 
     private Runnable openedSettings;
+    private boolean archivePasscodeSetup;
+
+    public ActionIntroActivity setArchivePasscodeSetup() {
+        archivePasscodeSetup = true;
+        return this;
+    }
+
     public void setOnOpenedSettings(Runnable openedSettings) {
         this.openedSettings = openedSettings;
     }
@@ -543,7 +550,9 @@ public class ActionIntroActivity extends BaseFragment implements LocationControl
                     break;
                 }
                 case ACTION_TYPE_SET_PASSCODE: {
-                    presentFragment(new PasscodeActivity(PasscodeActivity.TYPE_SETUP_CODE), true);
+                    presentFragment(new PasscodeActivity(archivePasscodeSetup
+                            ? PasscodeActivity.TYPE_SETUP_ARCHIVE_CODE
+                            : PasscodeActivity.TYPE_SETUP_CODE), true);
                     if (openedSettings != null) {
                         AndroidUtilities.runOnUIThread(openedSettings);
                         openedSettings = null;

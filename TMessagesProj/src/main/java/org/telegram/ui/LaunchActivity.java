@@ -176,6 +176,8 @@ import org.telegram.ui.Components.BatteryDrawable;
 import org.telegram.ui.Components.BlockingUpdateView;
 import org.telegram.ui.Components.Bulletin;
 import org.telegram.ui.Components.BulletinFactory;
+import org.telegram.ui.Components.ChannelFloatingButton;
+import org.telegram.ui.Components.FloatingShortcutOverlayService;
 import org.telegram.ui.Components.CubicBezierInterpolator;
 import org.telegram.ui.Components.Easings;
 import org.telegram.ui.Components.EmbedBottomSheet;
@@ -564,6 +566,10 @@ public class LaunchActivity extends BasePermissionsActivity implements INavigati
                 setVisibility(GONE);
             }
         });
+        frameLayout.addView(new ChannelFloatingButton(this), LayoutHelper.createFrame(56, 56, Gravity.TOP | Gravity.LEFT));
+        if (ChannelFloatingButton.isSystemOverlayEnabled(this)) {
+            FloatingShortcutOverlayService.start(this);
+        }
         setupActionBarLayout();
         drawerLayoutContainer.setParentActionBarLayout(actionBarLayout);
         actionBarLayout.setDrawerLayoutContainer(drawerLayoutContainer);

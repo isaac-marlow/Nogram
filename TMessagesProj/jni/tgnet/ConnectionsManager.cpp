@@ -17,6 +17,7 @@
 #include <openssl/rand.h>
 #include <zlib.h>
 #include <memory>
+#include <mutex>
 #include <string>
 #include <cinttypes>
 #include "ConnectionsManager.h"
@@ -136,24 +137,13 @@ ConnectionsManager::~ConnectionsManager() {
 }
 
 ConnectionsManager& ConnectionsManager::getInstance(int32_t instanceNum) {
-    switch (instanceNum) {
-        case 0:
-            static ConnectionsManager instance0(0);
-            return instance0;
-        case 1:
-            static ConnectionsManager instance1(1);
-            return instance1;
-        case 2:
-            static ConnectionsManager instance2(2);
-            return instance2;
-        case 3:
-            static ConnectionsManager instance3(3);
-            return instance3;
-        case 4:
-        default:
-            static ConnectionsManager instance4(4);
-            return instance4;
-    }
+    assert(instanceNum >= 0 && instanceNum < MAX_ACCOUNT_COUNT);
+    static ConnectionsManager *instances[MAX_ACCOUNT_COUNT] = {};
+    static std::once_flag instanceFlags[MAX_ACCOUNT_COUNT];
+    std::call_once(instanceFlags[instanceNum], [instanceNum] {
+        instances[instanceNum] = new ConnectionsManager(instanceNum);
+    });
+    return *instances[instanceNum];
 }
 
 int ConnectionsManager::callEvents(int64_t now) {
@@ -2432,8 +2422,7 @@ inline void addMessageToDatacenter(uint32_t datacenterId, NetworkMessage *networ
 // since we no longer save 3 global refs per request, can we make request count limits higher?
 #define MAX_GENERAL_REQUESTS 60 * 8
 #define MAX_DOWNLOAD_REQUESTS_CANCELS 24 * 2
-#define MAX_DOWNLOAD_REQUESTS_PREMIUM 32 * 2
-#define MAX_DOWNLOAD_REQUESTS 16 * 2
+#define MAX_DOWNLOAD_REQUESTS 32 * 2
 #define MAX_UPLOAD_REQUESTS 10 * 3
 
 void ConnectionsManager::processRequestQueue(uint32_t connectionTypes, uint32_t dc) {
@@ -2853,8 +2842,6 @@ void ConnectionsManager::processRequestQueue(uint32_t connectionTypes, uint32_t 
                 int max;
                 if (request->isCancelRequest()) {
                     max = MAX_DOWNLOAD_REQUESTS_CANCELS;
-                } else if (currentUserPremium) {
-                    max = MAX_DOWNLOAD_REQUESTS_PREMIUM;
                 } else {
                     max = MAX_DOWNLOAD_REQUESTS;
                 }
