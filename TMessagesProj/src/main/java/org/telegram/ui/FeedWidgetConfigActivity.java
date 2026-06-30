@@ -1,75 +1,89 @@
 package org.telegram.ui;
 
-import android.app.Activity;
 import android.appwidget.AppWidgetManager;
 import android.content.Intent;
-import android.content.SharedPreferences;
 import android.os.Bundle;
-import android.view.View;
+import android.widget.Toast;
 
-import org.telegram.messenger.AccountInstance;
-import org.telegram.messenger.AndroidUtilities;
+import org.telegram.messenger.ChannelFeedWidgetUtils;
 import org.telegram.messenger.FeedWidgetProvider;
+import org.telegram.messenger.R;
+import org.telegram.ui.Components.ChannelFloatingButton;
 
 public class FeedWidgetConfigActivity extends ExternalActionActivity {
 
     private int creatingAppWidgetId = AppWidgetManager.INVALID_APPWIDGET_ID;
+    private Runnable cancelResolve;
+    private boolean configuring;
 
     @Override
     protected boolean handleIntent(Intent intent, boolean isNew, boolean restore, boolean fromPassword, int intentAccount, int state) {
         if (!checkPasscode(intent, isNew, restore, fromPassword, intentAccount, state)) {
             return false;
         }
+        if (configuring) {
+            return true;
+        }
+
         Bundle extras = intent.getExtras();
         if (extras != null) {
-            creatingAppWidgetId = extras.getInt(AppWidgetManager.EXTRA_APPWIDGET_ID, AppWidgetManager.INVALID_APPWIDGET_ID);
+            creatingAppWidgetId = extras.getInt(
+                    AppWidgetManager.EXTRA_APPWIDGET_ID,
+                    AppWidgetManager.INVALID_APPWIDGET_ID);
         }
-        if (creatingAppWidgetId != AppWidgetManager.INVALID_APPWIDGET_ID) {
-            Bundle args = new Bundle();
-            args.putBoolean("onlySelect", true);
-            args.putInt("dialogsType", DialogsActivity.DIALOGS_TYPE_CHANNELS_ONLY);
-            args.putBoolean("allowSwitchAccount", true);
-            args.putBoolean("checkCanWrite", false);
-            DialogsActivity fragment = new DialogsActivity(args);
-            fragment.setDelegate((fragment1, dids, message, param, notify, scheduleDate, scheduleRepeatPeriod, topicsFragment) -> {
-                AccountInstance.getInstance(fragment1.getCurrentAccount()).getMessagesStorage().putWidgetDialogs(creatingAppWidgetId, dids);
-
-                SharedPreferences preferences = FeedWidgetConfigActivity.this.getSharedPreferences("shortcut_widget", Activity.MODE_PRIVATE);
-                SharedPreferences.Editor editor = preferences.edit();
-                editor.putInt("account" + creatingAppWidgetId, fragment1.getCurrentAccount());
-                editor.putLong("dialogId" + creatingAppWidgetId, dids.get(0).dialogId);
-                editor.commit();
-
-                AppWidgetManager appWidgetManager = AppWidgetManager.getInstance(FeedWidgetConfigActivity.this);
-                FeedWidgetProvider.updateWidget(FeedWidgetConfigActivity.this, appWidgetManager, creatingAppWidgetId);
-
-                Intent resultValue = new Intent();
-                resultValue.putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, creatingAppWidgetId);
-                setResult(RESULT_OK, resultValue);
-                finish();
-                return true;
-            });
-
-            if (AndroidUtilities.isTablet()) {
-                if (layersActionBarLayout.getFragmentStack().isEmpty()) {
-                    layersActionBarLayout.addFragmentToStack(fragment);
-                }
-            } else {
-                if (actionBarLayout.getFragmentStack().isEmpty()) {
-                    actionBarLayout.addFragmentToStack(fragment);
-                }
-            }
-            if (!AndroidUtilities.isTablet()) {
-                backgroundTablet.setVisibility(View.GONE);
-            }
-            actionBarLayout.showLastFragment();
-            if (AndroidUtilities.isTablet()) {
-                layersActionBarLayout.showLastFragment();
-            }
-            intent.setAction(null);
-        } else {
+        if (creatingAppWidgetId == AppWidgetManager.INVALID_APPWIDGET_ID) {
             finish();
+            return true;
         }
+
+        setResult(RESULT_CANCELED);
+        configuring = true;
+        String url = ChannelFloatingButton.getChannelUrl(this);
+        ChannelFeedWidgetUtils.ResolvedChannel savedChannel =
+                ChannelFeedWidgetUtils.getResolvedChannel(this, url);
+        if (savedChannel != null) {
+            finishConfiguration(savedChannel);
+            return true;
+        }
+
+        cancelResolve = ChannelFeedWidgetUtils.resolveChannel(intentAccount, url, (channel, error) -> {
+            cancelResolve = null;
+            if (isFinishing()) {
+                return;
+            }
+            if (channel == null) {
+                int message = error == ChannelFeedWidgetUtils.ERROR_NOT_JOINED
+                        ? R.string.ChannelFeedWidgetJoinFirst
+                        : error == ChannelFeedWidgetUtils.ERROR_NOT_CHANNEL
+                        ? R.string.ChannelFeedWidgetNotChannel
+                        : R.string.ChannelFeedWidgetResolveFailed;
+                Toast.makeText(this, message, Toast.LENGTH_LONG).show();
+                finish();
+                return;
+            }
+            ChannelFeedWidgetUtils.saveResolvedChannel(this, channel);
+            finishConfiguration(channel);
+        });
         return true;
+    }
+
+    private void finishConfiguration(ChannelFeedWidgetUtils.ResolvedChannel channel) {
+        FeedWidgetProvider.bindWidget(this, creatingAppWidgetId, channel);
+        AppWidgetManager appWidgetManager = AppWidgetManager.getInstance(this);
+        FeedWidgetProvider.updateWidget(this, appWidgetManager, creatingAppWidgetId);
+
+        Intent result = new Intent();
+        result.putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, creatingAppWidgetId);
+        setResult(RESULT_OK, result);
+        finish();
+    }
+
+    @Override
+    protected void onDestroy() {
+        if (cancelResolve != null) {
+            cancelResolve.run();
+            cancelResolve = null;
+        }
+        super.onDestroy();
     }
 }

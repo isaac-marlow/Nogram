@@ -15,7 +15,6 @@ import static org.telegram.messenger.LocaleController.formatPluralStringComma;
 import static org.telegram.messenger.LocaleController.formatString;
 import static org.telegram.messenger.LocaleController.getString;
 import static org.telegram.ui.Components.AlertsCreator.createClearOrDeleteDialogsAlert;
-import static org.telegram.ui.Components.Premium.LimitReachedBottomSheet.TYPE_ACCOUNTS;
 
 import android.Manifest;
 import android.animation.Animator;
@@ -7764,7 +7763,13 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
                     TLRPC.TL_dialogFolder dialogFolder = (TLRPC.TL_dialogFolder) dialog;
                     Bundle args = new Bundle();
                     args.putInt("folderId", dialogFolder.folder.id);
-                    presentFragment(new DialogsActivity(args));
+                    Runnable openFolder = () -> presentFragment(new DialogsActivity(args));
+                    if (dialogFolder.folder.id == 1 && SharedConfig.hasArchivePasscode()) {
+                        presentFragment(new PasscodeActivity(PasscodeActivity.TYPE_ENTER_ARCHIVE_CODE)
+                                .setOnArchivePasscodeAccepted(openFolder));
+                    } else {
+                        openFolder.run();
+                    }
                     return;
                 }
                 dialogId = dialog.id;
@@ -10724,6 +10729,32 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
 
     private ArrayList<TLRPC.Dialog> botShareDialogs;
 
+    private ArrayList<TLRPC.Dialog> filterDialogsByVisibilitySettings(MessagesController messagesController, ArrayList<TLRPC.Dialog> dialogs) {
+        boolean showChannels = messagesController.getMainSettings().getBoolean(ThemeActivity.PREF_SHOW_CHANNEL_DIALOGS, true);
+        boolean showBots = messagesController.getMainSettings().getBoolean(ThemeActivity.PREF_SHOW_BOT_DIALOGS, true);
+        if (showChannels && showBots) {
+            return dialogs;
+        }
+        ArrayList<TLRPC.Dialog> filteredDialogs = new ArrayList<>(dialogs.size());
+        for (int i = 0; i < dialogs.size(); i++) {
+            TLRPC.Dialog dialog = dialogs.get(i);
+            if (!showBots && DialogObject.isUserDialog(dialog.id)) {
+                TLRPC.User user = messagesController.getUser(dialog.id);
+                if (user != null && user.bot) {
+                    continue;
+                }
+            }
+            if (!showChannels && DialogObject.isChatDialog(dialog.id)) {
+                TLRPC.Chat chat = messagesController.getChat(-dialog.id);
+                if (chat != null && ChatObject.isChannelAndNotMegaGroup(chat)) {
+                    continue;
+                }
+            }
+            filteredDialogs.add(dialog);
+        }
+        return filteredDialogs;
+    }
+
     @NonNull
     public ArrayList<TLRPC.Dialog> getDialogsArray(int currentAccount, int dialogsType, int folderId, boolean frozen) {
         if (frozen && frozenDialogsList != null) {
@@ -10731,7 +10762,7 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
         }
         MessagesController messagesController = AccountInstance.getInstance(currentAccount).getMessagesController();
         if (dialogsType == DIALOGS_TYPE_DEFAULT) {
-            return messagesController.getDialogs(folderId);
+            return filterDialogsByVisibilitySettings(messagesController, messagesController.getDialogs(folderId));
         } else if (dialogsType == DIALOGS_TYPE_WIDGET || dialogsType == DIALOGS_TYPE_IMPORT_HISTORY) {
             return messagesController.dialogsServerOnly;
         } else if (dialogsType == DIALOGS_TYPE_ADD_USERS_TO) {
@@ -10771,12 +10802,12 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
         } else if (dialogsType == 7 || dialogsType == 8) {
             MessagesController.DialogFilter dialogFilter = messagesController.selectedDialogFilter[dialogsType == 7 ? 0 : 1];
             if (dialogFilter == null) {
-                return messagesController.getDialogs(folderId);
+                return filterDialogsByVisibilitySettings(messagesController, messagesController.getDialogs(folderId));
             } else {
                 if (initialDialogsType == DIALOGS_TYPE_FORWARD) {
                     return dialogFilter.dialogsForward;
                 }
-                return dialogFilter.dialogs;
+                return filterDialogsByVisibilitySettings(messagesController, dialogFilter.dialogs);
             }
         } else if (dialogsType == DIALOGS_TYPE_BLOCK) {
             return messagesController.dialogsForBlock;
